@@ -12,6 +12,20 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Please fill all the fields" });
     }
 
+    // B6: Password complexity validation
+    if (password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters long" });
+    }
+    if (!/[A-Z]/.test(password)) {
+      return res.status(400).json({ message: "Password must contain at least one uppercase letter" });
+    }
+    if (!/[a-z]/.test(password)) {
+      return res.status(400).json({ message: "Password must contain at least one lowercase letter" });
+    }
+    if (!/[0-9]/.test(password)) {
+      return res.status(400).json({ message: "Password must contain at least one number" });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
@@ -190,10 +204,80 @@ export const loginUser = async (req, res) => {
         username: user.username,
         email: user.email,
         isEmailVerified: user.isEmailVerified,
+        age: user.age,
+        gender: user.gender,
+        bloodType: user.bloodType,
+        medicalId: user.medicalId,
+        phone: user.phone,
+        dateOfBirth: user.dateOfBirth,
+        createdAt: user.createdAt
       },
     });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Server Error" });
+  }
+};
+
+export const updateUserProfile = async (req, res) => {
+  try {
+    const { gender, bloodType, medicalId, phone, dateOfBirth } = req.body;
+    const userId = req.user.id;
+
+    // Compute numeric age from dateOfBirth if provided
+    let age;
+    if (dateOfBirth) {
+      const dob = new Date(dateOfBirth);
+      if (!isNaN(dob)) {
+        const today = new Date();
+        age = today.getFullYear() - dob.getFullYear();
+        const monthDiff = today.getMonth() - dob.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+          age--;
+        }
+      }
+    }
+
+    const updateFields = {
+      gender,
+      bloodType,
+      medicalId,
+      phone,
+      dateOfBirth
+    };
+
+    // Only set age if we could compute it
+    if (age !== undefined) {
+      updateFields.age = age;
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      updateFields,
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        age: user.age,
+        gender: user.gender,
+        bloodType: user.bloodType,
+        medicalId: user.medicalId,
+        phone: user.phone,
+        dateOfBirth: user.dateOfBirth,
+        isEmailVerified: user.isEmailVerified
+      }
+    });
+  } catch (error) {
+    console.error("Update profile error:", error);
+    res.status(500).json({ message: "Failed to update profile" });
   }
 };

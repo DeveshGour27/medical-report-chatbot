@@ -7,42 +7,8 @@ import toast from 'react-hot-toast';
 const Header = ({ onSidebarToggle, isSidebarCollapsed = false }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { signOut, user } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-
-  const primaryNavItems = [
-    {
-      label: 'Dashboard',
-      path: '/dashboard',
-      icon: 'LayoutDashboard'
-    },
-    {
-      label: 'Upload Report',
-      path: '/upload-report',
-      icon: 'Upload'
-    },
-    {
-      label: 'My Reports',
-      path: '/my-reports',
-      icon: 'FileText'
-    },
-    {
-      label: 'Chat Assistant',
-      path: '/chat-assistant',
-      icon: 'MessageSquare'
-    }
-  ];
-
-  const secondaryNavItems = [
-    {
-      label: 'Profile Settings',
-      path: '/profile-settings',
-      icon: 'Settings'
-    }
-  ];
-
-  const isActive = (path) => location?.pathname === path;
 
   const handleLogout = async () => {
     const { error } = await signOut();
@@ -58,151 +24,78 @@ const Header = ({ onSidebarToggle, isSidebarCollapsed = false }) => {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-100 bg-card border-b border-border">
-      <div className="flex items-center justify-between h-16 px-6">
+    <header className="fixed top-0 left-0 right-0 z-40 bg-card border-b border-border">
+      <div className="flex items-center justify-between h-16 px-4 md:px-6">
         {/* Left Section - Logo and Mobile Toggle */}
-        <div className="flex items-center space-x-4">
-          {/* Mobile Menu Toggle */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors duration-150"
-          >
-            <Icon name="Menu" size={20} />
-          </button>
-
-          {/* Desktop Sidebar Toggle */}
+        <div className="flex items-center space-x-3">
+          {/* Mobile Sidebar Toggle */}
           <button
             onClick={onSidebarToggle}
-            className="hidden lg:flex p-2 rounded-lg hover:bg-muted transition-colors duration-150"
+            className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors duration-150"
           >
-            <Icon name={isSidebarCollapsed ? "PanelLeftOpen" : "PanelLeftClose"} size={20} />
+            <Icon name={isSidebarCollapsed ? "Menu" : "X"} size={20} />
           </button>
 
           {/* Logo */}
-          <Link to="/dashboard" className="flex items-center space-x-3">
+          <Link to="/dashboard" className="flex items-center space-x-2">
             <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg">
               <Icon name="Activity" size={20} color="white" />
             </div>
-            <div className="hidden sm:flex flex-col">
-              <span className="text-lg font-semibold text-foreground">MedReport</span>
-              <span className="text-xs text-muted-foreground">Dashboard</span>
-            </div>
+            <span className="hidden md:inline text-lg font-semibold text-foreground">MedReport</span>
           </Link>
         </div>
 
-        {/* Center Section - Desktop Navigation */}
-        <nav className="hidden lg:flex items-center space-x-1">
-          {primaryNavItems?.map((item) => (
-            <Link
-              key={item?.path}
-              to={item?.path}
-              className={`flex items-center px-4 py-2 rounded-lg transition-all duration-150 ease-out ${
-                isActive(item?.path)
-                  ? 'bg-primary text-primary-foreground shadow-card'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
-            >
-              <Icon name={item?.icon} size={18} className="mr-2" />
-              <span className="font-medium">{item?.label}</span>
-            </Link>
-          ))}
-        </nav>
-
-        {/* Right Section - User Menu and More Options */}
-        <div className="flex items-center space-x-2">
-          {/* More Menu - Desktop */}
-          <div className="hidden lg:block relative">
+        {/* Right Section - User Menu */}
+        <div className="flex items-center space-x-4">
+          {/* User Info and Dropdown */}
+          <div className="relative">
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center px-3 py-2 rounded-lg hover:bg-muted transition-colors duration-150"
+              className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-muted transition-colors duration-150"
             >
-              <Icon name="MoreHorizontal" size={18} className="mr-2" />
-              <span className="font-medium text-muted-foreground">More</span>
-              <Icon name="ChevronDown" size={16} className="ml-1 text-muted-foreground" />
+              <div className="flex flex-col items-end">
+                <span className="text-sm font-medium text-foreground">{user?.username || 'User'}</span>
+                <span className="text-xs text-muted-foreground">{user?.email || ''}</span>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <Icon name="User" size={16} />
+              </div>
             </button>
 
+            {/* User Dropdown Menu */}
             {userMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-48 bg-popover border border-border rounded-lg shadow-modal py-2 z-200">
-                {secondaryNavItems?.map((item) => (
-                  <Link
-                    key={item?.path}
-                    to={item?.path}
-                    className="flex items-center px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors duration-150"
-                    onClick={() => setUserMenuOpen(false)}
-                  >
-                    <Icon name={item?.icon} size={16} className="mr-3" />
-                    {item?.label}
-                  </Link>
-                ))}
-                <hr className="my-2 border-border" />
-                <Link
-                  to="/help"
-                  className="flex items-center px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors duration-150"
+              <>
+                {/* Invisible full-screen overlay — clicking anywhere outside closes the dropdown */}
+                <div
+                  className="fixed inset-0 z-40"
                   onClick={() => setUserMenuOpen(false)}
-                >
-                  <Icon name="HelpCircle" size={16} className="mr-3" />
-                  Help & Support
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center w-full px-4 py-2 text-sm text-error hover:bg-muted transition-colors duration-150"
-                >
-                  <Icon name="LogOut" size={16} className="mr-3" />
-                  Sign Out
-                </button>
-              </div>
+                />
+                {/* Dropdown panel — sits above the overlay at z-50 */}
+                <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-lg py-2 z-50">
+                  <Link
+                    to="/profile-settings"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center space-x-3 px-4 py-2 hover:bg-muted transition-colors text-sm"
+                  >
+                    <Icon name="Settings" size={16} />
+                    <span>Profile Settings</span>
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-muted transition-colors text-sm text-red-500"
+                  >
+                    <Icon name="LogOut" size={16} />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </>
             )}
-          </div>
-
-          {/* User Avatar - Mobile */}
-          <div className="lg:hidden">
-            <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center">
-              <Icon name="User" size={16} color="white" />
-            </div>
           </div>
         </div>
       </div>
-      {/* Mobile Navigation Menu */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 top-16 z-200 bg-background">
-          <div className="p-6 space-y-4">
-            {[...primaryNavItems, ...secondaryNavItems]?.map((item) => (
-              <Link
-                key={item?.path}
-                to={item?.path}
-                className={`flex items-center px-4 py-3 rounded-lg transition-all duration-150 ease-out ${
-                  isActive(item?.path)
-                    ? 'bg-primary text-primary-foreground shadow-card'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Icon name={item?.icon} size={20} className="mr-3" />
-                <span className="font-medium">{item?.label}</span>
-              </Link>
-            ))}
-            
-            <hr className="my-4 border-border" />
-            
-            <Link
-              to="/help"
-              className="flex items-center px-4 py-3 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors duration-150"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <Icon name="HelpCircle" size={20} className="mr-3" />
-              <span className="font-medium">Help & Support</span>
-            </Link>
-            
-            <button
-              onClick={handleLogout}
-              className="flex items-center w-full px-4 py-3 rounded-lg text-error hover:bg-muted transition-colors duration-150"
-            >
-              <Icon name="LogOut" size={20} className="mr-3" />
-              <span className="font-medium">Sign Out</span>
-            </button>
-          </div>
-        </div>
-      )}
     </header>
   );
 };

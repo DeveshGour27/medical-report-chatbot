@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
+import { API_USERS } from "../utils/apiConstants";
 
 const AuthContext = createContext({});
 
-// Configure axios defaults
-const API_URL = "http://localhost:4000/api/v1/users";
+const API_URL = API_USERS; // centralized in apiConstants.js
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -103,6 +103,9 @@ export const AuthProvider = ({ children }) => {
       // Clear token and user
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      // Clear reports and chat data for security
+      localStorage.removeItem("medicalReports");
+      localStorage.removeItem("chatMessages");
 
       setToken(null);
       setUser(null);
@@ -111,6 +114,13 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       return { error: { message: error.message } };
     }
+  };
+
+  // Update user profile in context and localStorage
+  const updateUser = (updatedUserData) => {
+    const merged = { ...user, ...updatedUserData };
+    setUser(merged);
+    localStorage.setItem("user", JSON.stringify(merged));
   };
 
   // Reset password (placeholder - implement backend endpoint)
@@ -210,6 +220,7 @@ export const AuthProvider = ({ children }) => {
     updatePassword,
     verifyEmail,
     resendVerification,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

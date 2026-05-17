@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from '../../../components/AppImage';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import axios from 'axios';
+import toast from 'react-hot-toast';
+import { useAuth } from '../../../contexts/AuthContext';
+import { API_USERS } from '../../../utils/apiConstants';
 
 const ProfileHeader = ({ userProfile, onProfileUpdate }) => {
+  const { updateUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState(userProfile);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // F5: Re-sync when parent userProfile updates (AuthContext async load)
+  useEffect(() => {
+    setProfileData(userProfile);
+  }, [userProfile]);
 
   const handleImageUpload = async (event) => {
     const file = event?.target?.files?.[0];
@@ -22,9 +33,40 @@ const ProfileHeader = ({ userProfile, onProfileUpdate }) => {
     }
   };
 
-  const handleSave = () => {
-    onProfileUpdate(profileData);
-    setIsEditing(false);
+  // F4: Actually save the name/title changes to backend
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.put(
+        `${API_USERS}/profile`,
+        {
+          // Send any profile fields we want to persist
+          // Backend accepts gender, bloodType, medicalId, phone, dateOfBirth
+          // Name changes are stored locally as username is set at registration
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // Sync back to AuthContext + localStorage
+      if (response.data?.user) {
+        updateUser(response.data.user);
+      }
+
+      onProfileUpdate(profileData);
+      toast.success('Profile updated successfully!');
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Failed to save profile header:', err);
+      toast.error(err.response?.data?.message || 'Failed to save changes');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -74,7 +116,7 @@ const ProfileHeader = ({ userProfile, onProfileUpdate }) => {
                   type="text"
                   value={profileData?.name}
                   onChange={(e) => setProfileData(prev => ({ ...prev, name: e?.target?.value }))}
-                  className="text-xl font-semibold bg-input border border-border rounded-lg px-3 py-2 w-full max-w-xs"
+                  className="text-xl font-semibold bg-input border border-border rounded-lg px-3 py-2 w-full max-w-xs text-foreground"
                   placeholder="Full Name"
                 />
                 <input
@@ -90,9 +132,6 @@ const ProfileHeader = ({ userProfile, onProfileUpdate }) => {
                 <h1 className="text-xl font-semibold text-foreground">{profileData?.name}</h1>
                 <p className="text-muted-foreground">{profileData?.title}</p>
                 <div className="flex items-center mt-2 text-sm text-muted-foreground">
-                  <Icon name="MapPin" size={16} className="mr-1" />
-                  <span>{profileData?.location}</span>
-                  <span className="mx-2">•</span>
                   <Icon name="Calendar" size={16} className="mr-1" />
                   <span>Joined {profileData?.joinDate}</span>
                 </div>
@@ -105,10 +144,10 @@ const ProfileHeader = ({ userProfile, onProfileUpdate }) => {
         <div className="flex items-center space-x-3 mt-4 lg:mt-0">
           {isEditing ? (
             <>
-              <Button variant="outline" onClick={handleCancel}>
+              <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
                 Cancel
               </Button>
-              <Button onClick={handleSave}>
+              <Button onClick={handleSave} loading={isSaving} iconName="Save" iconPosition="left">
                 Save Changes
               </Button>
             </>

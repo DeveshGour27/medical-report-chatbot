@@ -1,13 +1,14 @@
 import os
 import re
-import PyPDF2
+import pdfplumber
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+from langchain_core.documents import Document
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # Environment setup
+print("GROQ KEY:", os.getenv("GROQ_API_KEY"))
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise ValueError("GROQ_API_KEY is missing. Please add it to your .env file.")
@@ -34,69 +35,225 @@ class MedicalReportParser:
         results = {}
         lines = text.split('\n')
         
+        print(f"\n[RAG] Parsing {len(lines)} lines from PDF")
+        
         for line in lines:
-            if not line.strip():
+            if not line.strip() or len(line.strip()) < 5:
                 continue
             
-            pattern_table = r'^([A-Za-z\s]+?)\s+([a-zA-Z/%]+)\s+([0-9.]+)\s*[-]\s*([0-9.]+).*?\s+([0-9.]+)\s*$'
-            match = re.search(pattern_table, line.strip())
+            # Debug: print lines that might contain data
+            if any(char.isdigit() for char in line):
+                print(f"[RAG] Processing line: {line[:80]}")
+            
+            # Pattern 1: Lab format - TEST VALUE STATUS REFERENCE UNIT
+            # Matches: "HEMOGLOBIN 12.5 Low 13.0 - 17.0 g/dL"
+            # or "RBC BLOOD COUNT 5.2 - 4.5 - 5.5 mill/cumm"
+            pattern_lab = r'([A-Za-z\s]+?)\s+([0-9.]+)\s+(?:[A-Za-z]+)?\s*([0-9.]+)\s*[-]\s*([0-9.]+)\s+([a-zA-Z/%\-\.]+)\s*$'
+            match = re.search(pattern_lab, line.strip())
             
             if match:
                 test_name = match.group(1).strip()
-                unit = match.group(2)
-                ref_low = float(match.group(3))
-                ref_high = float(match.group(4))
-                value = float(match.group(5))
+                value = match.group(2)
+                ref_low = match.group(3)
+                ref_high = match.group(4)
+                unit = match.group(5).strip()
                 
-                results[test_name.lower()] = {
-                    'value': value,
-                    'unit': unit,
-                    'reference_low': ref_low,
-                    'reference_high': ref_high,
-                    'original_line': line.strip()
-                }
+                test_key = re.sub(r'\s+', ' ', test_name.lower())
+                
+                if test_key not in results:
+                    print(f"[RAG] ✓ Matched (pattern 1): {test_name} = {value} {unit}")
+                    results[test_key] = {
+                        'value': str(value),
+                        'unit': unit,
+                        'reference_low': str(ref_low),
+                        'reference_high': str(ref_high),
+                    }
                 continue
             
-            pattern_colon = r'([A-Za-z\s]+?)[:]\s*([0-9.]+)\s*([a-zA-Z/%]*)\s*(?:\(.*?([0-9.]+)\s*[-]\s*([0-9.]+))?'
+            # Pattern 2: Flexible format with tabs or multiple spaces
+            # Try to match: VALUE REFERENCE_LOW-REFERENCE_HIGH UNIT on same line as TEST NAME
+            pattern_tabular = r'([A-Za-z\s]+?)\s{2,}([0-9.]+)\s+([0-9.]+)\s*[-]\s*([0-9.]+)\s+([a-zA-Z/%\-\.]+)'
+            match = re.search(pattern_tabular, line.strip())
+            
+            if match:
+                test_name = match.group(1).strip()
+                value = match.group(2)
+                ref_low = match.group(3)
+                ref_high = match.group(4)
+                unit = match.group(5).strip()
+                
+                test_key = re.sub(r'\s+', ' ', test_name.lower())
+                
+                if test_key not in results:
+                    print(f"[RAG] ✓ Matched (pattern 2): {test_name} = {value} {unit}")
+                    results[test_key] = {
+                        'value': str(value),
+                        'unit': unit,
+                        'reference_low': str(ref_low),
+                        'reference_high': str(ref_high),
+                    }
+                continue
+            
+            # Pattern 3: Colon format with parentheses
+            pattern_colon = r'([A-Za-z\s]+?)[:]\s*([0-9.]+)\s*([a-zA-Z/%]*)\s*\(\s*normal\s+([0-9.]+)\s*[-]\s*([0-9.]+)\s*\)'
             match = re.search(pattern_colon, line, re.IGNORECASE)
             
             if match:
                 test_name = match.group(1).strip()
-                value = float(match.group(2))
-                unit = match.group(3) or ""
-                ref_low = float(match.group(4)) if match.group(4) else None
-                ref_high = float(match.group(5)) if match.group(5) else None
+                value = match.group(2)
+                unit = match.group(3).strip() or "units"
+                ref_low = match.group(4)
+                ref_high = match.group(5)
                 
-                results[test_name.lower()] = {
-                    'value': value,
-                    'unit': unit,
-                    'reference_low': ref_low,
-                    'reference_high': ref_high,
-                    'original_line': line.strip()
-                }
+                test_key = re.sub(r'\s+', ' ', test_name.lower())
+                
+                if test_key not in results:
+                    print(f"[RAG] ✓ Matched (pattern 3): {test_name} = {value} {unit}")
+                    results[test_key] = {
+                        'value': str(value),
+                        'unit': unit,
+                        'reference_low': str(ref_low),
+                        'reference_high': str(ref_high),
+                    }
+                continue
+
+            # Pattern 4: TEST_NAME [H/L]? VALUE UNIT REF_LOW - REF_HIGH (e.g. "Hemoglobin 14.5 g/dL 13.0 - 16.5")
+            pattern_4 = r'^([A-Za-z0-9\s\(\)\.,\-_]+?)\s+([HLhl]?\s*[0-9.]+)\s+(?:([A-Za-z/%\-\.]+)\s+)?([0-9.]+)\s*[-]\s*([0-9.]+).*$'
+            match = re.search(pattern_4, line.strip())
+            
+            if match:
+                test_name = match.group(1).strip()
+                raw_val = match.group(2).strip()
+                
+                # Strip out 'H' or 'L' flag from the value if present
+                val_match = re.search(r'([0-9.]+)', raw_val)
+                value = val_match.group(1) if val_match else raw_val
+                
+                unit = match.group(3).strip() if match.group(3) else ""
+                ref_low = match.group(4)
+                ref_high = match.group(5)
+                
+                test_key = re.sub(r'\s+', ' ', test_name.lower())
+                
+                # Exclude lines that are obviously just dates or IDs matching by accident
+                if len(test_name) > 3 and not re.match(r'^[0-9\-\.]+$', test_name):
+                    if test_key not in results:
+                        print(f"[RAG] ✓ Matched (pattern 4): {test_name} = {value} {unit}")
+                        results[test_key] = {
+                            'value': str(value),
+                            'unit': unit,
+                            'reference_low': str(ref_low),
+                            'reference_high': str(ref_high),
+                        }
+                continue
         
+        print(f"[RAG] Final result: extracted {len(results)} tests")
+        if len(results) > 0:
+            print(f"[RAG] Tests found: {list(results.keys())}")
         return results
     
     def extract_from_pdf(self, pdf_path):
         if not os.path.exists(pdf_path):
-            print(f"File not found: {pdf_path}")
+            print(f"[RAG] File not found: {pdf_path}")
             return None
         
-        text = ""
+        results = {}
+        full_text = ""
         try:
-            with open(pdf_path, "rb") as f:
-                reader = PyPDF2.PdfReader(f)
-                for page in reader.pages:
-                    page_text = page.extract_text()
-                    if page_text:
-                        text += page_text + "\n"
+            with pdfplumber.open(pdf_path) as pdf:
+                print(f"[RAG] Opened PDF with {len(pdf.pages)} pages")
+                
+                for page_num, page in enumerate(pdf.pages):
+                    print(f"[RAG] Processing page {page_num + 1}...")
+                    
+                    # Extract tables first (best for structured lab reports)
+                    tables = page.extract_tables()
+                    if tables:
+                        print(f"[RAG] Found {len(tables)} table(s) on page {page_num + 1}")
+                        for table in tables:
+                            results.update(self._parse_table(table))
+                    
+                    # Always collect raw text for LLM fallback
+                    page_text = page.extract_text() or ""
+                    full_text += page_text + "\n"
+                    
+                    # Try regex parsing as fallback if tables gave nothing
+                    if page_text and not results:
+                        print(f"[RAG] Trying regex text parsing on page {page_num + 1}...")
+                        text_results = self.parse_test_values(page_text)
+                        results.update(text_results)
+                
+                # Always save raw text so API can use it as LLM context
+                self.raw_text = full_text.strip()
+                self.parsed_data = results
+                print(f"[RAG] Total extracted: {len(results)} tests, raw_text length: {len(self.raw_text)} chars")
+                return results
+                
         except Exception as e:
-            print(f"Error reading PDF: {e}")
-            return None
+            print(f"[RAG] Error reading PDF: {e}")
+            self.raw_text = ""
+            return {}
+    
+    def _parse_table(self, table):
+        """Extract test values from a table structure"""
+        results = {}
         
-        self.raw_text = text
-        self.parsed_data = self.parse_test_values(text)
-        return self.parsed_data
+        # Headers typically in first row
+        if not table or len(table) < 2:
+            return results
+        
+        headers = [str(h).lower() if h else "" for h in table[0]]
+        print(f"[RAG] Table headers: {headers}")
+        
+        # Find column indices for key fields
+        test_col = None
+        value_col = None
+        ref_col = None
+        unit_col = None
+        
+        for i, h in enumerate(headers):
+            if 'investigation' in h or 'test' in h or 'name' in h:
+                test_col = i
+            elif 'result' in h or 'value' in h:
+                value_col = i
+            elif 'reference' in h or 'normal' in h or 'range' in h:
+                ref_col = i
+            elif 'unit' in h:
+                unit_col = i
+        
+        print(f"[RAG] Columns - test:{test_col}, value:{value_col}, ref:{ref_col}, unit:{unit_col}")
+        
+        # Parse data rows
+        for row in table[1:]:
+            if not row or len(row) < 2:
+                continue
+            
+            try:
+                test_name = str(row[test_col]).strip() if test_col is not None and test_col < len(row) else None
+                value = str(row[value_col]).strip() if value_col is not None and value_col < len(row) else None
+                ref_range = str(row[ref_col]).strip() if ref_col is not None and ref_col < len(row) else None
+                unit = str(row[unit_col]).strip() if unit_col is not None and unit_col < len(row) else ""
+                
+                if test_name and value and ref_range:
+                    # Parse reference range
+                    ref_match = re.search(r'([0-9.]+)\s*[-–]\s*([0-9.]+)', ref_range)
+                    if ref_match:
+                        ref_low = ref_match.group(1)
+                        ref_high = ref_match.group(2)
+                        
+                        test_key = re.sub(r'\s+', ' ', test_name.lower())
+                        results[test_key] = {
+                            'value': value,
+                            'unit': unit,
+                            'reference_low': ref_low,
+                            'reference_high': ref_high,
+                        }
+                        print(f"[RAG] ✓ Extracted from table: {test_name} = {value} {unit}")
+            except Exception as e:
+                print(f"[RAG] Error parsing row: {e}")
+                continue
+        
+        return results
     
     def get_test_value(self, test_name):
         test_name_lower = test_name.lower()
@@ -199,138 +356,44 @@ def format_response_for_web(text):
     paragraphs = [p.strip() for p in text.split('\n') if p.strip()]
     return "\n\n".join(paragraphs)
 
-# 🔥 RESTORED FUNCTION
-def detect_test_value_query(query):
-    """Detect test queries & summary request."""
-    query_lower = query.lower()
-
-    summary_keywords = ['summary', 'summarize', 'overview', 'report summary', 'full report']
-    if any(k in query_lower for k in summary_keywords):
-        return "SUMMARY"
-
-    test_names = [
-        'hemoglobin', 'rbc', 'wbc', 'platelet', 'glucose',
-        'cholesterol', 'hba1c', 'esr', 'creatinine',
-        'thyroid', 'tsh', 'vitamin', 'iron'
-    ]
-
-    if any(word in query_lower for word in ['my', 'what is my', 'show my']):
-        for t in test_names:
-            if t in query_lower:
-                return t
-    
-    return None
-
-# NATURAL conversational explanation
-def generate_personalized_test_response(test_name, test_data, query):
-    try:
-        retriever = knowledge_db.as_retriever(search_kwargs={"k": 4})
-        results = retriever.invoke(f"{test_name} significance meaning")
-        context = "\n\n".join([d.page_content for d in results]) if results else ""
-    except:
-        context = ""
-    
-    # Determine status
-    status = "normal"
-    if test_data['reference_low'] and test_data['reference_high']:
-        if test_data['value'] < test_data['reference_low']:
-            status = "below normal"
-        elif test_data['value'] > test_data['reference_high']:
-            status = "above normal"
-    
-    patient_info = f"""
-Value: {test_data['value']} {test_data['unit']}
-Range: {test_data['reference_low']}–{test_data['reference_high']} {test_data['unit']}
-Status: {status}
-"""
-    
-    prompt = f"""
-You are a warm, conversational medical chatbot.  
-Explain information naturally like a real doctor, without repeating a fixed structure.
-
-Rules:
-- Do NOT create a heading with the test name.
-- Do NOT repeat the same pattern every time.
-- Use bold text or bullet points only when it genuinely improves clarity.
-- Speak naturally and empathetically.
-
-Patient Info:
-{patient_info}
-
-Extra Medical Info:
-{context if context else "No extra context available."}
-
-User Question: "{query}"
-
-Now respond naturally, in a clear and friendly tone:
-"""
-    
-    response = llm.invoke(prompt)
-    return format_response_for_web(response.strip()) + "\n\n*Please consult your doctor for personalized advice.*"
-
-# Report Summary
-def generate_report_summary():
-    if not report_parser.parsed_data:
-        return "No medical report loaded."
-    
-    normal_tests = []
-    abnormal_tests = []
-    
-    for test_name, data in report_parser.parsed_data.items():
-        if data['reference_low'] and data['reference_high']:
-            if data['value'] < data['reference_low'] or data['value'] > data['reference_high']:
-                abnormal_tests.append((test_name, data))
-            else:
-                normal_tests.append((test_name, data))
-    
-    summary = "**Your Medical Report Summary**\n\n"
-    summary += f"- Total tests: {len(normal_tests) + len(abnormal_tests)}\n"
-    summary += f"- Normal: {len(normal_tests)}\n"
-    summary += f"- Abnormal: {len(abnormal_tests)}\n\n"
-    
-    if abnormal_tests:
-        summary += "**Important findings:**\n"
-        for t, d in abnormal_tests:
-            summary += f"- **{t.title()}**: {d['value']}\n"
-    
-    return summary
-
 # Main chatbot
-def medical_chatbot(query):
+def medical_chatbot(full_prompt):
+    import time
+    start_time = time.time()
     try:
-        test_name = detect_test_value_query(query)
-        
-        if test_name == "SUMMARY":
-            return generate_report_summary()
-        
-        if test_name and test_name != "SUMMARY" and report_parser.parsed_data:
-            return generate_personalized_test_response(test_name, report_parser.get_test_value(test_name), query)
+        # Extract the actual question from the prompt to query the vector database
+        import re
+        match = re.search(r'Patient Question: "(.*?)"', full_prompt)
+        user_question = match.group(1) if match else full_prompt
         
         try:
+            t0 = time.time()
             retriever = knowledge_db.as_retriever(search_kwargs={"k": 4})
-            results = retriever.invoke(query)
+            results = retriever.invoke(user_question)
             context = "\n\n".join([d.page_content for d in results]) if results else ""
+            print(f"[RAG Perf] Retriever took {time.time() - t0:.2f}s")
         except:
             context = ""
 
-        prompt = f"""
-You are a natural conversational medical chatbot. 
-Explain things clearly and warmly, like a real doctor.
+        final_prompt = f"""
+{full_prompt}
 
-User Question:
-"{query}"
-
-Relevant Info:
-{context if context else "No context available."}
-
-Respond naturally:
+Relevant Medical Knowledge (use this to explain medical terms if helpful):
+{context}
 """
         
-        response = llm.invoke(prompt)
-        return format_response_for_web(response.strip())
-    
+        t1 = time.time()
+        response = llm.invoke(final_prompt)
+        print(f"[RAG Perf] LLM invoke took {time.time() - t1:.2f}s")
+        
+        total = time.time() - start_time
+        print(f"[RAG Perf] Total chatbot time: {total:.2f}s")
+        
+        return format_response_for_web(response.strip()) + "\n\n*Please consult your doctor for personalized advice.*"
+        
     except Exception as e:
-        return f"Error: {str(e)}"
+        print(f"Chatbot error: {e}")
+        return f"Error processing your request: {str(e)}"
 
 def main():
     print("="*70)

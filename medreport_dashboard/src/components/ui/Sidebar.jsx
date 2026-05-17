@@ -34,12 +34,6 @@ const Sidebar = ({ isCollapsed = false, onToggle }) => {
       path: '/chat-assistant',
       icon: 'MessageSquare',
       tooltip: 'AI-powered report analysis'
-    },
-    {
-      label: 'Profile Settings',
-      path: '/profile-settings',
-      icon: 'Settings',
-      tooltip: 'Account and preferences'
     }
   ];
 
@@ -135,32 +129,42 @@ const Sidebar = ({ isCollapsed = false, onToggle }) => {
 
           {/* User Dropdown Menu */}
           {userMenuOpen && !isCollapsed && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 bg-popover border border-border rounded-lg shadow-modal py-2 z-200">
-              <Link
-                to="/profile-settings"
-                className="flex items-center px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors duration-150"
+            <>
+              {/* Invisible full-screen overlay — clicking anywhere outside closes the dropdown */}
+              <div
+                className="fixed inset-0 z-40"
                 onClick={() => setUserMenuOpen(false)}
-              >
-                <Icon name="Settings" size={16} className="mr-3" />
-                Settings
-              </Link>
-              <Link
-                to="/help"
-                className="flex items-center px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors duration-150"
-                onClick={() => setUserMenuOpen(false)}
-              >
-                <Icon name="HelpCircle" size={16} className="mr-3" />
-                Help & Support
-              </Link>
-              <hr className="my-2 border-border" />
-              <button
-                onClick={handleLogout}
-                className="flex items-center w-full px-4 py-2 text-sm text-error hover:bg-muted transition-colors duration-150"
-              >
-                <Icon name="LogOut" size={16} className="mr-3" />
-                Sign Out
-              </button>
-            </div>
+              />
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-popover border border-border rounded-lg shadow-modal py-2 z-50">
+                <Link
+                  to="/profile-settings"
+                  className="flex items-center px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors duration-150"
+                  onClick={() => setUserMenuOpen(false)}
+                >
+                  <Icon name="Settings" size={16} className="mr-3" />
+                  Settings
+                </Link>
+                <Link
+                  to="/help"
+                  className="flex items-center px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors duration-150"
+                  onClick={() => setUserMenuOpen(false)}
+                >
+                  <Icon name="HelpCircle" size={16} className="mr-3" />
+                  Help & Support
+                </Link>
+                <hr className="my-2 border-border" />
+                <button
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    handleLogout();
+                  }}
+                  className="flex items-center w-full px-4 py-2 text-sm text-error hover:bg-muted transition-colors duration-150"
+                >
+                  <Icon name="LogOut" size={16} className="mr-3" />
+                  Sign Out
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>

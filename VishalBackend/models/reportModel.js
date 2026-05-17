@@ -14,7 +14,9 @@ const reportSchema = new mongoose.Schema({
   uploadDate: String,
   fileName: String,
   
-  extractedData: {},   // store extraction result
+  extractedData: { type: mongoose.Schema.Types.Mixed },
+  extractedDataStr: String,
+  rawText: String,  // full PDF text for LLM fallback
   status: { type: String, default: "processed" }
 });
 

@@ -46,15 +46,17 @@ const RecentReportCard = ({ report }) => {
       </div>
       <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{report?.summary}</p>
       <div className="flex items-center space-x-2">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          iconName="Eye" 
-          iconPosition="left"
-          className="flex-1"
-        >
-          View
-        </Button>
+        <Link to="/my-reports" className="flex-1">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            iconName="Eye" 
+            iconPosition="left"
+            fullWidth
+          >
+            View
+          </Button>
+        </Link>
         <Link to="/chat-assistant" className="flex-1">
           <Button 
             variant="default" 

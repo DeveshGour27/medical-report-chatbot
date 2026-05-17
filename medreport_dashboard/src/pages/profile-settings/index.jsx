@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Helmet } from 'react-helmet';
 import Header from '../../components/ui/Header';
 import Sidebar from '../../components/ui/Sidebar';
@@ -10,11 +11,14 @@ import SecurityTab from './components/SecurityTab';
 import PreferencesTab from './components/PreferencesTab';
 import DataExportTab from './components/DataExportTab';
 import { useAuth } from '../../contexts/AuthContext';
+import { API_REPORTS } from '../../utils/apiConstants';
 
 const ProfileSettings = () => {
   const { user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
+  const [loadingStats, setLoadingStats] = useState(true);
+
   const [userProfile, setUserProfile] = useState({
     name: user?.username || "",
     title: "Patient",
@@ -33,19 +37,21 @@ const ProfileSettings = () => {
     policyNumber: ""
   });
 
+  // Calculate real stats from user data
   const [userStats, setUserStats] = useState({
-    totalReports: 47,
-    totalConversations: 23,
-    reportsAnalyzed: 41,
-    accountAge: 287
+    totalReports: 0,
+    reportsAnalyzed: 0,
+    accountAge: 0
   });
 
+  // Keep security settings (not user-specific without backend)
   const [securitySettings, setSecuritySettings] = useState({
-    twoFactorEnabled: true,
-    lastPasswordChange: "2024-11-15",
-    activeSessions: 3
+    twoFactorEnabled: false,
+    lastPasswordChange: "Not set",
+    activeSessions: 1
   });
 
+  // User preferences (stored locally or in backend)
   const [preferences, setPreferences] = useState({
     units: "metric",
     language: "en",
@@ -70,6 +76,68 @@ const ProfileSettings = () => {
   });
 
   const [exportHistory, setExportHistory] = useState([]);
+
+  // Fetch user stats and profile data from backend
+  useEffect(() => {
+    if (user) {
+      calculateUserStats();
+      loadUserProfile();
+    }
+  }, [user]);
+
+  const loadUserProfile = async () => {
+    try {
+      // Update with current user data from auth context
+      if (user) {
+        setUserProfile(prev => ({
+          ...prev,
+          name: user?.username || "User",
+          email: user?.email || "",
+          age: user?.age || "",
+          gender: user?.gender || "",
+          bloodType: user?.bloodType || "",
+          medicalId: user?.medicalId || "",
+          phone: user?.phone || "",
+          dateOfBirth: user?.dateOfBirth || ""
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to load user profile:', err);
+    }
+  };
+
+  const calculateUserStats = async () => {
+    try {
+      setLoadingStats(true);
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        setLoadingStats(false);
+        return;
+      }
+
+      const response = await axios.get(`${API_REPORTS}/list`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const userReports = response.data.reports || [];
+      const accountCreated = new Date(user?.createdAt);
+      const accountAgeDays = Math.floor((Date.now() - accountCreated) / (1000 * 60 * 60 * 24));
+
+      setUserStats({
+        totalReports: userReports.length,
+        reportsAnalyzed: userReports.filter(r => r.status === 'processed').length,
+        accountAge: accountAgeDays
+      });
+    } catch (err) {
+      console.error('Failed to calculate stats:', err);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
   const tabs = [
     {

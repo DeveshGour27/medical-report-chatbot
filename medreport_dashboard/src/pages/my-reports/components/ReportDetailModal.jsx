@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import { useAuth } from '../../../contexts/AuthContext';
 
 
 const ReportDetailModal = ({ report, isOpen, onClose, onChatWithReport }) => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
   if (!isOpen || !report) return null;
@@ -50,7 +52,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, onChatWithReport }) => {
             </div>
             <div>
               <h2 className="text-xl font-semibold text-foreground">{report?.name}</h2>
-              <p className="text-sm text-muted-foreground">Patient: {report?.patientName}</p>
+              <p className="text-sm text-muted-foreground">Patient: {user?.username || report?.patientName || 'Unknown'}</p>
             </div>
           </div>
           <div className="flex items-center space-x-3">
@@ -93,19 +95,19 @@ const ReportDetailModal = ({ report, isOpen, onClose, onChatWithReport }) => {
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Report Type:</span>
-                      <span className="text-foreground capitalize">{report?.type?.replace('_', ' ')}</span>
+                      <span className="text-foreground capitalize">{report?.category?.replace('_', ' ') || report?.type?.replace('_', ' ') || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Upload Date:</span>
-                      <span className="text-foreground">{report?.uploadDate}</span>
+                      <span className="text-foreground">{report?.uploadDate ? new Date(report.uploadDate).toLocaleDateString() : 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">File Size:</span>
                       <span className="text-foreground">{report?.fileSize || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Lab:</span>
-                      <span className="text-foreground">{report?.lab || 'N/A'}</span>
+                      <span className="text-muted-foreground">Lab / Notes:</span>
+                      <span className="text-foreground">{report?.notes || report?.lab || 'N/A'}</span>
                     </div>
                   </div>
                 </div>
@@ -115,19 +117,19 @@ const ReportDetailModal = ({ report, isOpen, onClose, onChatWithReport }) => {
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Patient Name:</span>
-                      <span className="text-foreground">{report?.patientName}</span>
+                      <span className="text-foreground">{user?.username || report?.patientId || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Age:</span>
-                      <span className="text-foreground">{report?.patientAge || 'N/A'}</span>
+                      <span className="text-foreground">{user?.age || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Gender:</span>
-                      <span className="text-foreground">{report?.patientGender || 'N/A'}</span>
+                      <span className="text-foreground capitalize">{user?.gender || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Doctor:</span>
-                      <span className="text-foreground">{report?.doctor || 'N/A'}</span>
+                      <span className="text-foreground">{report?.doctorName || report?.doctor || 'N/A'}</span>
                     </div>
                   </div>
                 </div>
@@ -163,39 +165,62 @@ const ReportDetailModal = ({ report, isOpen, onClose, onChatWithReport }) => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {report?.keyValues?.map((value, index) => {
-                  const valueStatus = getValueStatus(value?.value, value?.normalRange);
-                  return (
-                    <div key={index} className="bg-background border border-border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-foreground">{value?.name}</h4>
-                        <Icon 
-                          name={valueStatus?.status === 'normal' ? 'CheckCircle' : 'AlertCircle'} 
-                          size={16} 
-                          className={valueStatus?.color}
-                        />
+                {(() => {
+                  let rawData = report?.extractedData?.["0"] || report?.extractedData || {};
+                  
+                  // Bulletproof fallback
+                  if (Object.keys(rawData).length === 0 && report?.extractedDataStr) {
+                    try {
+                      const parsed = JSON.parse(report.extractedDataStr);
+                      rawData = parsed?.["0"] || parsed || {};
+                    } catch (e) {}
+                  }
+
+                  const values = report?.keyValues || Object.entries(rawData).map(([key, obj]) => ({
+                    name: key,
+                    value: obj?.value,
+                    unit: obj?.unit,
+                    normalRange: `${obj?.reference_low}-${obj?.reference_high}`
+                  }));
+                  
+                  if (!values || values.length === 0) {
+                    return <div className="col-span-2 text-center py-8 text-muted-foreground">No medical values found in this report.</div>;
+                  }
+
+                  return values.map((value, index) => {
+                    const valueStatus = getValueStatus(value?.value, value?.normalRange);
+                    return (
+                      <div key={index} className="bg-background border border-border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium text-foreground capitalize">{value?.name}</h4>
+                          <Icon 
+                            name={valueStatus?.status === 'normal' ? 'CheckCircle' : 'AlertCircle'} 
+                            size={16} 
+                            className={valueStatus?.color}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Value:</span>
+                            <span className={`font-semibold ${valueStatus?.color}`}>
+                              {value?.value} {value?.unit}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Normal Range:</span>
+                            <span className="text-foreground">{value?.normalRange} {value?.unit}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Status:</span>
+                            <span className={`capitalize font-medium ${valueStatus?.color}`}>
+                              {valueStatus?.status}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Value:</span>
-                          <span className={`font-semibold ${valueStatus?.color}`}>
-                            {value?.value} {value?.unit}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Normal Range:</span>
-                          <span className="text-foreground">{value?.normalRange} {value?.unit}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Status:</span>
-                          <span className={`capitalize font-medium ${valueStatus?.color}`}>
-                            {valueStatus?.status}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             </div>
           )}

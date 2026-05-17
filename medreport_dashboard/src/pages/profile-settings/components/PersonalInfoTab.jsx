@@ -1,12 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import Input from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
 import Select from '../../../components/ui/Select';
+import toast from 'react-hot-toast';
+import { useAuth } from '../../../contexts/AuthContext';
+import { API_USERS } from '../../../utils/apiConstants';
 
 const PersonalInfoTab = ({ userProfile, onUpdate }) => {
+  const { updateUser } = useAuth();
   const [formData, setFormData] = useState(userProfile);
   const [isLoading, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+
+  // Re-sync formData whenever parent passes in updated userProfile
+  // (needed because useState only captures the initial value at mount,
+  //  but AuthContext may still be loading at that point)
+  useEffect(() => {
+    setFormData(userProfile);
+  }, [userProfile]);
 
   const genderOptions = [
     { value: 'male', label: 'Male' },
@@ -42,16 +54,8 @@ const PersonalInfoTab = ({ userProfile, onUpdate }) => {
     
     if (!formData?.email?.trim()) {
       newErrors.email = 'Email address is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/?.test(formData?.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData?.email)) {
       newErrors.email = 'Please enter a valid email address';
-    }
-    
-    if (!formData?.medicalId?.trim()) {
-      newErrors.medicalId = 'Medical ID is required';
-    }
-
-    if (!formData?.phone?.trim()) {
-      newErrors.phone = 'Phone number is required';
     }
 
     setErrors(newErrors);
@@ -62,11 +66,37 @@ const PersonalInfoTab = ({ userProfile, onUpdate }) => {
     if (!validateForm()) return;
     
     setSaving(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.put(
+        `${API_USERS}/profile`,
+        {
+          gender: formData.gender,
+          bloodType: formData.bloodType,
+          medicalId: formData.medicalId,
+          phone: formData.phone,
+          dateOfBirth: formData.dateOfBirth
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // Sync the saved data back to AuthContext + localStorage so it persists on refresh
+      const savedUser = response.data.user;
+      updateUser(savedUser);
+
       onUpdate(formData);
+      toast.success('Profile updated successfully!');
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      toast.error(error.response?.data?.message || 'Failed to update profile');
+    } finally {
       setSaving(false);
-    }, 1500);
+    }
   };
 
   return (

@@ -111,42 +111,44 @@ const SignUp = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <div className="sm:mx-auto sm:w-full sm:max-w-md mb-8">
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Create your account
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              Or{" "}
-              <Link
-                to="/login"
-                className="font-medium text-blue-600 hover:text-blue-500"
-              >
-                sign in to your existing account
-              </Link>
-            </p>
+        <div className="flex justify-center mb-6">
+          <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
           </div>
+        </div>
+        <h2 className="text-center text-3xl font-bold text-foreground">
+          Create your account
+        </h2>
+        <p className="mt-2 text-center text-sm text-muted-foreground">
+          Or{" "}
+          <Link to="/login" className="font-medium text-primary hover:underline">
+            sign in to your existing account
+          </Link>
+        </p>
+      </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-card border border-border py-8 px-6 shadow rounded-lg">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 flex">
-                <AlertCircle className="h-5 w-5 text-red-400 mr-3 mt-0.5" />
-                <div className="text-sm text-red-700">{error}</div>
+              <div className="bg-destructive/5 border border-destructive/20 rounded-md p-4 flex">
+                <AlertCircle className="h-5 w-5 text-destructive mr-3 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-destructive">{error}</div>
               </div>
             )}
 
             {success && (
-              <div className="bg-green-50 border border-green-200 rounded-md p-4">
+              <div className="bg-success/10 border border-success/20 rounded-md p-4">
                 <div className="flex">
-                  <CheckCircle className="h-5 w-5 text-green-400 mr-3 mt-0.5 flex-shrink-0" />
+                  <CheckCircle className="h-5 w-5 text-success mr-3 mt-0.5 flex-shrink-0" />
                   <div>
-                    <div className="text-sm font-medium text-green-800">{success}</div>
-                    <div className="mt-2 text-sm text-green-700">
+                    <div className="text-sm font-medium text-foreground">{success}</div>
+                    <div className="mt-2 text-sm text-muted-foreground">
                       <p>Check your email inbox and click the verification link to activate your account.</p>
                       <p className="mt-1">
-                        <Link to="/login" className="font-medium underline hover:text-green-900">
+                        <Link to="/login" className="font-medium text-primary hover:underline">
                           Go to Login
                         </Link>
                       </p>
@@ -157,14 +159,11 @@ const SignUp = () => {
             )}
 
             <div>
-              <label
-                htmlFor="username"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="username" className="block text-sm font-medium text-foreground mb-1">
                 Username
               </label>
-              <div className="mt-1 relative">
-                <Input
+              <div className="relative">
+                <input
                   id="username"
                   name="username"
                   type="text"
@@ -173,21 +172,18 @@ const SignUp = () => {
                   value={formData.username}
                   onChange={handleChange}
                   placeholder="Enter your username"
-                  className="pl-10"
+                  className="w-full pl-10 pr-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-                <User className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                <User className="h-5 w-5 text-muted-foreground absolute left-3 top-1/2 transform -translate-y-1/2" />
               </div>
             </div>
 
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1">
                 Email address
               </label>
-              <div className="mt-1 relative">
-                <Input
+              <div className="relative">
+                <input
                   id="email"
                   name="email"
                   type="email"
@@ -196,21 +192,18 @@ const SignUp = () => {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="Enter your email"
-                  className="pl-10"
+                  className="w-full pl-10 pr-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-                <Mail className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                <Mail className="h-5 w-5 text-muted-foreground absolute left-3 top-1/2 transform -translate-y-1/2" />
               </div>
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
                 Password
               </label>
-              <div className="mt-1 relative">
-                <Input
+              <div className="relative">
+                <input
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
@@ -218,33 +211,26 @@ const SignUp = () => {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="Enter your password"
-                  className="pl-10 pr-10"
+                  placeholder="Min. 8 chars, uppercase, number"
+                  className="w-full pl-10 pr-10 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-                <Lock className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                <Lock className="h-5 w-5 text-muted-foreground absolute left-3 top-1/2 transform -translate-y-1/2" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
             </div>
 
             <div>
-              <label
-                htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground mb-1">
                 Confirm Password
               </label>
-              <div className="mt-1 relative">
-                <Input
+              <div className="relative">
+                <input
                   id="confirmPassword"
                   name="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
@@ -253,43 +239,35 @@ const SignUp = () => {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="Confirm your password"
-                  className="pl-10 pr-10"
+                  className="w-full pl-10 pr-10 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
-                <Lock className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                <Lock className="h-5 w-5 text-muted-foreground absolute left-3 top-1/2 transform -translate-y-1/2" />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
+                  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
             </div>
 
             <div>
-              <Button
+              <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-2 px-4 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "Creating account..." : "Create account"}
-              </Button>
+              </button>
             </div>
 
-            <div className="text-xs text-gray-500 text-center">
+            <p className="text-xs text-muted-foreground text-center">
               By creating an account, you agree to our{" "}
-              <Link to="/terms" className="text-blue-600 hover:text-blue-500">
-                Terms of Service
-              </Link>{" "}
+              <span className="text-primary">Terms of Service</span>{" "}
               and{" "}
-              <Link to="/privacy" className="text-blue-600 hover:text-blue-500">
-                Privacy Policy
-              </Link>
-            </div>
+              <span className="text-primary">Privacy Policy</span>
+            </p>
           </form>
         </div>
       </div>

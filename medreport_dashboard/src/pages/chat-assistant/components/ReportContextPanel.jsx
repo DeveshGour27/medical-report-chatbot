@@ -85,8 +85,8 @@ const ReportContextPanel = ({ selectedReport, onReportSelect, reports }) => {
 
       {/* Extracted Data */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {selectedReport?.extractedData?.[0] &&
-          Object.entries(selectedReport.extractedData[0]).map(([key, obj], index) => (
+        {selectedReport?.extractedData?.["0"] &&
+          Object.entries(selectedReport.extractedData["0"]).map(([key, obj], index) => (
             <div key={index} className="bg-muted rounded-lg p-4">
 
               <div className="flex items-center justify-between mb-2">

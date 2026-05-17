@@ -7,6 +7,7 @@ const ReportsTable = ({
   reports, 
   onViewReport, 
   onChatWithReport, 
+  onDeleteReport,
   selectedReports, 
   onSelectionChange,
   sortConfig,
@@ -203,6 +204,15 @@ const ReportsTable = ({
                       >
                         Chat
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onDeleteReport(report?.id)}
+                        iconName="Trash2"
+                        className="text-error"
+                      >
+                        Delete
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -295,6 +305,17 @@ const ReportsTable = ({
                 fullWidth
               >
                 Chat
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onDeleteReport(report?.id)}
+                iconName="Trash2"
+                iconPosition="left"
+                fullWidth
+                className="text-error"
+              >
+                Delete
               </Button>
             </div>
           </div>

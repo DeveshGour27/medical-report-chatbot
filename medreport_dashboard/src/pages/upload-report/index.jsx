@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import toast from "react-hot-toast";
 
 import Header from "../../components/ui/Header";
 import Sidebar from "../../components/ui/Sidebar";
@@ -10,22 +12,22 @@ import UploadProgress from "./components/UploadProgress";
 import ReportMetadataForm from "./components/ReportMetadataForm";
 import UploadSuccess from "./components/UploadSuccess";
 import Icon from "../../components/AppIcon";
+import { API_REPORTS } from "../../utils/apiConstants";
 
 const UploadReport = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const [selectedFile, setSelectedFile] = useState(null);
-
-  // extractedData MUST always be of shape { "0": {...} }
   const [extractedData, setExtractedData] = useState({});
-
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);  // F11: will be updated
   const [currentStep, setCurrentStep] = useState(1);
 
   const [uploadComplete, setUploadComplete] = useState(false);
   const [uploadedReport, setUploadedReport] = useState(null);
+  const [rawText, setRawText] = useState("");
 
   const [metadata, setMetadata] = useState({
     title: "",
@@ -37,24 +39,32 @@ const UploadReport = () => {
     notes: ""
   });
 
-  // ------------------------------------------------------------------
-  // 1️⃣ RECEIVE FILE + EXTRACTED DATA FROM BACKEND
-  // ------------------------------------------------------------------
-  const handleFileSelect = (file, extracted) => {
-    console.log("Extracted from backend:", extracted);
+  // F11: simulate progress during extraction step
+  const simulateProgress = (onDone) => {
+    setUploadProgress(0);
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 15;
+      if (progress >= 90) {
+        clearInterval(interval);
+        setUploadProgress(90);
+        onDone();
+      } else {
+        setUploadProgress(Math.round(progress));
+      }
+    }, 300);
+    return interval;
+  };
 
+  const handleFileSelect = (file, extracted, rawText) => {
     setSelectedFile(file);
-
-    // ALWAYS FORCE CORRECT SHAPE
-    setExtractedData({
-      "0": extracted || {}
-    });
-
+    setExtractedData({ "0": extracted?.["0"] || extracted || {} });
+    setRawText(rawText || "");
     setIsUploading(false);
+    setUploadProgress(0);
     setCurrentStep(4);
   };
 
-  // Remove file
   const handleRemoveFile = () => {
     setSelectedFile(null);
     setExtractedData({});
@@ -64,14 +74,10 @@ const UploadReport = () => {
 
   const handleMetadataChange = (meta) => setMetadata(meta);
 
-  // ------------------------------------------------------------------
-  // 2️⃣ FINAL SUBMIT — SAVE TO LOCALSTORAGE + BACKEND
-  // ------------------------------------------------------------------
   const handleSubmit = async () => {
     if (!selectedFile) return;
 
     const reportData = {
-      id: Date.now().toString(), // 🔥 STRING ID — VERY IMPORTANT
       title: metadata.title || "Uploaded Medical Report",
       category: metadata.category,
       priority: metadata.priority,
@@ -79,45 +85,47 @@ const UploadReport = () => {
       doctorName: metadata.doctorName,
       patientId: metadata.patientId,
       notes: metadata.notes,
-
       uploadDate: new Date().toISOString(),
       fileName: selectedFile.name,
-
-      // MUST be exactly { "0": {...} }
       extractedData: extractedData,
-
+      rawText: rawText,
       status: "processed"
     };
 
-    console.log("🚀 SENDING TO BACKEND:", reportData);
-
-    // -------------------------
-    // 1) SAVE TO LOCAL STORAGE
-    // -------------------------
-    const existing = JSON.parse(localStorage.getItem("medicalReports") || "[]");
-    existing.unshift(reportData);
-    localStorage.setItem("medicalReports", JSON.stringify(existing));
-
-    // -------------------------
-    // 2) SAVE TO BACKEND
-    // -------------------------
     try {
-      const res = await axios.post("http://127.0.0.1:8000/save_report", reportData, {
-        headers: { "Content-Type": "application/json" }
-      });
-      console.log("✔ Backend saved:", res.data);
-    } catch (err) {
-      console.error("❌ Backend save failed:", err);
-    }
+      setIsUploading(true);
+      setUploadProgress(10);
 
-    // -------------------------
-    // 3) UPDATE UI
-    // -------------------------
-    setUploadedReport(reportData);
-    setUploadComplete(true);
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        toast.error('Session expired. Please log in again.');  // F3: toast instead of alert
+        navigate('/login');
+        return;
+      }
+
+      // F11: animate progress while saving
+      simulateProgress(() => {});
+
+      const res = await axios.post(`${API_REPORTS}/save`, reportData, {  // B5: use constant
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      setUploadProgress(100);
+      setUploadedReport(reportData);
+      setUploadComplete(true);
+      toast.success('Report uploaded successfully!');
+    } catch (err) {
+      setUploadProgress(0);
+      toast.error('Failed to upload report. Please try again.');  // F3: toast instead of alert
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  // Reset upload
   const handleUploadAnother = () => {
     setSelectedFile(null);
     setExtractedData({});
@@ -127,9 +135,6 @@ const UploadReport = () => {
     setCurrentStep(1);
   };
 
-  // ------------------------------------------------------------------
-  // UI
-  // ------------------------------------------------------------------
   return (
     <div className="min-h-screen bg-background">
 

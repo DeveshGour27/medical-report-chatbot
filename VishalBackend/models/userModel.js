@@ -8,6 +8,12 @@ const userSchema = new Schema(
     isEmailVerified: { type: Boolean, default: false },
     emailVerificationToken: { type: String },
     emailVerificationExpires: { type: Date },
+    age: { type: Number },
+    gender: { type: String, enum: ['male', 'female', 'other', 'prefer-not-to-say'] },
+    bloodType: { type: String },
+    medicalId: { type: String },
+    phone: { type: String },
+    dateOfBirth: { type: String }
   },
   { timestamps: true }
 );

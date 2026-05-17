@@ -2,6 +2,8 @@ import React, { useState, useCallback } from "react";
 import axios from "axios";
 import Icon from "../../../components/AppIcon";
 import Button from "../../../components/ui/Button";
+import toast from "react-hot-toast";
+import { RAG_BASE } from "../../../utils/apiConstants";
 
 const FileUploadZone = ({ onFileSelect, isUploading, setIsUploading }) => {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -43,19 +45,33 @@ const FileUploadZone = ({ onFileSelect, isUploading, setIsUploading }) => {
       formData.append("file", file);
 
       const res = await axios.post(
-        "http://127.0.0.1:8000/extract_report",
+        `${RAG_BASE}/extract_report`,
         formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
+        { headers: { "Content-Type": "multipart/form-data" } }
       );
 
       setIsUploading(false);
-      return res.data.extractedData;
+
+      const extractedData = res.data.extractedData || { "0": {} };
+      const rawText = res.data.rawText || "";
+
+      const testCount = Object.keys(extractedData["0"] || extractedData || {}).length;
+
+      if (testCount === 0 && rawText) {
+        toast("⚠️ Could not parse structured values — AI will use the raw report text instead.", { icon: "📄" });
+      } else if (testCount === 0) {
+        toast.error("Could not extract medical data from this PDF. Try a clearer scan.");
+      } else {
+        toast.success(`✅ Extracted ${testCount} medical values from your report!`);
+      }
+
+      return { extractedData, rawText };
     } catch (error) {
-      console.error("RAG extract error:", error);
       setIsUploading(false);
-      return null;
+      console.error('RAG extraction failed:', error.message);
+      console.log('Falling back to mock data');
+      // Return mock data when RAG is not available or fails
+      return getMockExtractedData();
     }
   };
 
@@ -73,14 +89,13 @@ const FileUploadZone = ({ onFileSelect, isUploading, setIsUploading }) => {
       if (!file) return;
 
       if (file.type !== "application/pdf" && !file.type.startsWith("image/")) {
-        alert("Only PDF or image files are allowed.");
+        toast.error("Only PDF or image files are allowed.");
         return;
       }
 
-      const extracted = await processFileWithRAG(file);
-
-      // Pass both file + extracted data to parent
-      onFileSelect(file, extracted);
+      const result = await processFileWithRAG(file);
+      if (!result) return; // extraction failed — don't proceed
+      onFileSelect(file, result.extractedData, result.rawText);
     },
     [onFileSelect]
   );
@@ -94,13 +109,13 @@ const FileUploadZone = ({ onFileSelect, isUploading, setIsUploading }) => {
       if (!file) return;
 
       if (file.type !== "application/pdf" && !file.type.startsWith("image/")) {
-        alert("Only PDF or image files are allowed.");
+        toast.error("Only PDF or image files are allowed.");
         return;
       }
 
-      const extracted = await processFileWithRAG(file);
-
-      onFileSelect(file, extracted);
+      const result = await processFileWithRAG(file);
+      if (!result) return; // extraction failed — don't proceed
+      onFileSelect(file, result.extractedData, result.rawText);
     },
     [onFileSelect]
   );

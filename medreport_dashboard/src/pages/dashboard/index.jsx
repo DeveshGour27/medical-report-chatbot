@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { motion } from 'framer-motion';
+import Header from '../../components/ui/Header';
+import Sidebar from '../../components/ui/Sidebar';
 import MetricCard from './components/MetricCard';
 import RecentReportCard from './components/RecentReportCard';
 import ConversationCard from './components/ConversationCard';
@@ -9,168 +12,111 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [reports, setReports] = useState([]);
   const [filteredReports, setFilteredReports] = useState([]);
   const [filteredConversations, setFilteredConversations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Mock data for dashboard metrics
+  // Fetch user's reports from backend
+  useEffect(() => {
+    fetchUserReports();
+  }, []);
+
+  const fetchUserReports = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        setError('No authentication token found');
+        setReports([]);
+        setLoading(false);
+        return;
+      }
+
+      const response = await axios.get('http://localhost:4000/api/reports/list', {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const userReports = response.data.reports || [];
+      setReports(userReports);
+      setFilteredReports(userReports?.slice(0, 6));
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch reports:', err);
+      setError('Failed to load reports. Please try again.');
+      setReports([]);
+      setFilteredReports([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate dashboard metrics from real data
   const dashboardMetrics = [
     {
       title: "Total Reports",
-      value: "247",
+      value: reports.length.toString(),
       icon: "FileText",
       trend: "up",
-      trendValue: "+12%",
       color: "primary"
     },
     {
-      title: "AI Conversations",
-      value: "89",
-      icon: "MessageSquare",
-      trend: "up", 
-      trendValue: "+8%",
-      color: "accent"
-    },
-    {
-      title: "Reports Analyzed",
-      value: "156",
+      title: "Processed Reports",
+      value: reports.filter(r => r.status === 'processed').length.toString(),
       icon: "BarChart3",
       trend: "up",
-      trendValue: "+15%",
       color: "success"
     },
     {
       title: "Latest Upload",
-      value: "2h ago",
+      value: reports.length > 0 ? new Date(reports[0]?.uploadDate).toLocaleDateString() : "No uploads",
       icon: "Upload",
       color: "warning"
+    },
+    {
+      title: "Categories",
+      value: new Set(reports.map(r => r.category)).size.toString(),
+      icon: "Folder",
+      color: "accent"
     }
   ];
 
-  // Mock data for recent reports
-  const recentReports = [
-    {
-      id: 1,
-      type: "Blood Test",
-      date: "Dec 3, 2024",
-      status: "Normal",
-      summary: "Complete blood count shows all parameters within normal range. Hemoglobin: 14.2 g/dL, WBC: 7,200/μL"
-    },
-    {
-      id: 2,
-      type: "X-Ray",
-      date: "Dec 2, 2024", 
-      status: "Normal",
-      summary: "Chest X-ray reveals clear lung fields with no signs of infection or abnormalities"
-    },
-    {
-      id: 3,
-      type: "MRI",
-      date: "Dec 1, 2024",
-      status: "Pending",
-      summary: "Brain MRI scan completed. Awaiting radiologist review for detailed analysis"
-    },
-    {
-      id: 4,
-      type: "ECG",
-      date: "Nov 30, 2024",
-      status: "Normal",
-      summary: "12-lead ECG shows normal sinus rhythm with heart rate of 72 bpm"
-    },
-    {
-      id: 5,
-      type: "CT Scan",
-      date: "Nov 29, 2024",
-      status: "Abnormal",
-      summary: "Abdominal CT shows minor inflammation in the lower abdomen. Follow-up recommended"
-    },
-    {
-      id: 6,
-      type: "Ultrasound",
-      date: "Nov 28, 2024",
-      status: "Normal",
-      summary: "Abdominal ultrasound reveals normal organ structure and function"
-    }
-  ];
-
-  // Mock data for recent conversations
+  // Mock conversations for now (can be connected to backend later)
   const recentConversations = [
     {
       id: 1,
-      topic: "Blood Test Results Analysis",
-      lastMessage: "Your hemoglobin levels are within the normal range. The slight increase in white blood cells could indicate...",
-      timestamp: new Date(Date.now() - 900000) // 15 minutes ago
-    },
-    {
-      id: 2,
-      topic: "X-Ray Interpretation",
-      lastMessage: "The chest X-ray shows clear lung fields. There are no signs of pneumonia or other respiratory issues...",
-      timestamp: new Date(Date.now() - 3600000) // 1 hour ago
-    },
-    {
-      id: 3,
-      topic: "MRI Scan Questions",
-      lastMessage: "I can help explain the MRI findings once the radiologist completes the review. In the meantime...",
-      timestamp: new Date(Date.now() - 7200000) // 2 hours ago
-    },
-    {
-      id: 4,
-      topic: "ECG Reading Discussion",
-      lastMessage: "Your ECG shows a normal sinus rhythm. The heart rate of 72 bpm is excellent for your age group...",
-      timestamp: new Date(Date.now() - 86400000) // 1 day ago
-    },
-    {
-      id: 5,
-      topic: "CT Scan Follow-up",
-      lastMessage: "The CT scan shows minor inflammation. I recommend discussing treatment options with your doctor...",
-      timestamp: new Date(Date.now() - 172800000) // 2 days ago
+      topic: "Report Analysis",
+      lastMessage: "Your reports have been analyzed. Click to view details.",
+      timestamp: new Date()
     }
   ];
 
-  useEffect(() => {
-    setFilteredReports(recentReports?.slice(0, 6));
-    setFilteredConversations(recentConversations?.slice(0, 4));
-  }, []);
-
   const handleFilterChange = (filters) => {
-    let filtered = [...recentReports];
+    let filtered = [...reports];
     
-    // Filter by report type
-    if (filters?.reportType !== 'all') {
-      filtered = filtered?.filter(report => report?.type === filters?.reportType);
-    }
-    
-    // Filter by date range
-    if (filters?.dateRange !== 'all') {
-      const now = new Date();
-      const reportDate = new Date();
-      
-      switch (filters?.dateRange) {
-        case 'today':
-          filtered = filtered?.filter(report => {
-            const date = new Date(report.date);
-            return date?.toDateString() === now?.toDateString();
-          });
-          break;
-        case 'week':
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          filtered = filtered?.filter(report => {
-            const date = new Date(report.date);
-            return date >= weekAgo;
-          });
-          break;
-        case 'month':
-          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          filtered = filtered?.filter(report => {
-            const date = new Date(report.date);
-            return date >= monthAgo;
-          });
-          break;
-        default:
-          break;
-      }
+    // Filter by report type (category)
+    if (filters?.reportType !== 'all' && filters?.reportType) {
+      filtered = filtered?.filter(report => report?.category === filters?.reportType);
     }
     
     setFilteredReports(filtered?.slice(0, 6));
+  };
+
+  // Format report for display
+  const formatReportForCard = (report) => {
+    return {
+      id: report._id,
+      type: report.category || 'General',
+      date: new Date(report.uploadDate).toLocaleDateString(),
+      status: report.status || 'processed',
+      summary: report.notes || 'No notes available'
+    };
   };
 
   const containerVariants = {
@@ -197,7 +143,17 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="p-6 space-y-8">
+      <Header 
+        onSidebarToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        isSidebarCollapsed={sidebarCollapsed}
+      />
+      <Sidebar 
+        isCollapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
+      
+      <main className={`pt-16 transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-60'}`}>
+        <div className="p-6 space-y-8">
         {/* Header Section */}
         <motion.div 
           className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0"
@@ -249,7 +205,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-foreground">Recent Reports</h2>
               <span className="text-sm text-muted-foreground">
-                {filteredReports?.length} of {recentReports?.length} reports
+                {filteredReports?.length} of {reports?.length} reports
               </span>
             </div>
             
@@ -261,14 +217,22 @@ const Dashboard = () => {
                 animate="visible"
               >
                 {filteredReports?.map((report) => (
-                  <motion.div key={report?.id} variants={itemVariants}>
-                    <RecentReportCard report={report} />
+                  <motion.div key={report?._id} variants={itemVariants}>
+                    <RecentReportCard report={formatReportForCard(report)} />
                   </motion.div>
                 ))}
               </motion.div>
+            ) : loading ? (
+              <div className="bg-card border border-border rounded-lg p-8 text-center">
+                <p className="text-muted-foreground">Loading reports...</p>
+              </div>
+            ) : error ? (
+              <div className="bg-card border border-error rounded-lg p-8 text-center">
+                <p className="text-error">{error}</p>
+              </div>
             ) : (
               <div className="bg-card border border-border rounded-lg p-8 text-center">
-                <p className="text-muted-foreground">No reports found matching the selected filters.</p>
+                <p className="text-muted-foreground">No reports found. Upload your first report to get started!</p>
               </div>
             )}
           </motion.div>
@@ -283,7 +247,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-foreground">Recent Conversations</h2>
               <span className="text-sm text-muted-foreground">
-                {filteredConversations?.length} active
+                {recentConversations?.length} active
               </span>
             </div>
             
@@ -293,7 +257,7 @@ const Dashboard = () => {
               initial="hidden"
               animate="visible"
             >
-              {filteredConversations?.map((conversation) => (
+              {recentConversations?.map((conversation) => (
                 <motion.div key={conversation?.id} variants={itemVariants}>
                   <ConversationCard conversation={conversation} />
                 </motion.div>
@@ -308,22 +272,23 @@ const Dashboard = () => {
               <h3 className="font-medium text-foreground">Quick Stats</h3>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">This Week</span>
-                  <span className="font-medium text-foreground">12 reports</span>
+                  <span className="text-muted-foreground">Total Reports</span>
+                  <span className="font-medium text-foreground">{reports.length} reports</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">AI Interactions</span>
-                  <span className="font-medium text-foreground">28 chats</span>
+                  <span className="text-muted-foreground">Processed</span>
+                  <span className="font-medium text-foreground">{reports.filter(r => r.status === 'processed').length} reports</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Avg. Response</span>
-                  <span className="font-medium text-foreground">2.3 min</span>
+                  <span className="text-muted-foreground">Categories</span>
+                  <span className="font-medium text-foreground">{new Set(reports.map(r => r.category)).size} types</span>
                 </div>
               </div>
             </motion.div>
           </motion.div>
         </div>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };
