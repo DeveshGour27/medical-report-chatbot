@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Input from '../../../components/ui/Input';
+import DateInput from '../../../components/ui/DateInput';
 import Select from '../../../components/ui/Select';
 import Button from '../../../components/ui/Button';
 
@@ -117,15 +118,13 @@ const ReportFilters = ({ onFiltersChange, totalReports, filteredCount }) => {
         />
 
         {/* Date Range Filters */}
-        <Input
-          type="date"
+        <DateInput
           label="From Date"
           value={dateRange?.start}
           onChange={(e) => handleDateRangeChange('start', e?.target?.value)}
         />
 
-        <Input
-          type="date"
+        <DateInput
           label="To Date"
           value={dateRange?.end}
           onChange={(e) => handleDateRangeChange('end', e?.target?.value)}

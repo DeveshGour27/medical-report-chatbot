@@ -29,7 +29,7 @@ export const sendVerificationEmail = async (email, username, token) => {
   }/verify-email?token=${token}`;
 
   const mailOptions = {
-    from: `"Your App Name" <${process.env.EMAIL_USER}>`,
+    from: `"Med Report" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: "Verify Your Email Address",
     html: `

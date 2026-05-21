@@ -3,8 +3,10 @@ import { Checkbox, CheckboxGroup } from '../../../components/ui/Checkbox';
 import Select from '../../../components/ui/Select';
 import Button from '../../../components/ui/Button';
 import Icon from '../../../components/AppIcon';
+import { useTheme } from '../../../contexts/ThemeContext';
 
 const PreferencesTab = ({ preferences, onUpdate }) => {
+  const { theme, toggleTheme } = useTheme();
   const [formData, setFormData] = useState(preferences);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -86,6 +88,30 @@ const PreferencesTab = ({ preferences, onUpdate }) => {
 
   return (
     <div className="space-y-8">
+      {/* Display Preferences - Theme Toggle */}
+      <div className="bg-card rounded-lg border border-border p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Display Preferences</h3>
+        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+              <Icon name={theme === 'dark' ? 'Moon' : 'Sun'} size={20} className={theme === 'dark' ? 'text-yellow-400' : 'text-yellow-500'} />
+            </div>
+            <div>
+              <span className="font-medium text-foreground">Theme</span>
+              <div className="text-sm text-muted-foreground">
+                Current: <span className="capitalize font-semibold">{theme} mode</span>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={toggleTheme}
+            className="flex items-center space-x-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+          >
+            <Icon name={theme === 'dark' ? 'Sun' : 'Moon'} size={18} />
+            <span>Switch to {theme === 'dark' ? 'Light' : 'Dark'}</span>
+          </button>
+        </div>
+      </div>
       {/* General Preferences */}
       <div className="bg-card rounded-lg border border-border p-6">
         <h3 className="text-lg font-semibold text-foreground mb-4">General Preferences</h3>

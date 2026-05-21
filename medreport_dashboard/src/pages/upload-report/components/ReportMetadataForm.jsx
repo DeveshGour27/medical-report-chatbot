@@ -1,5 +1,6 @@
 import React from 'react';
 import Input from '../../../components/ui/Input';
+import DateInput from '../../../components/ui/DateInput';
 import Select from '../../../components/ui/Select';
 import Button from '../../../components/ui/Button';
 
@@ -71,9 +72,8 @@ const ReportMetadataForm = ({
         />
 
         {/* Report Date */}
-        <Input
+        <DateInput
           label="Report Date"
-          type="date"
           value={metadata?.reportDate}
           onChange={(e) => handleInputChange('reportDate', e?.target?.value)}
           required

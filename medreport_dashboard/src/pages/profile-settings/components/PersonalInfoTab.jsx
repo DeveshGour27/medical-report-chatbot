@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Input from '../../../components/ui/Input';
+import DateInput from '../../../components/ui/DateInput';
 import Button from '../../../components/ui/Button';
 import Select from '../../../components/ui/Select';
 import toast from 'react-hot-toast';
@@ -143,11 +144,11 @@ const PersonalInfoTab = ({ userProfile, onUpdate }) => {
           placeholder="+1 (555) 123-4567"
         />
 
-        <Input
+        <DateInput
           label="Date of Birth"
-          type="date"
           value={formData?.dateOfBirth || ''}
           onChange={(e) => handleInputChange('dateOfBirth', e?.target?.value)}
+          placeholder="dd-mm-yyyy"
         />
 
         <Select
