@@ -209,7 +209,7 @@ const ChatAssistant = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header
         onSidebarToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         isSidebarCollapsed={sidebarCollapsed}
@@ -224,83 +224,82 @@ const ChatAssistant = () => {
         variants={pageVariants}
         initial="hidden"
         animate="visible"
-        className={`pt-16 transition-all duration-300 ${
+        className={`pt-16 flex-1 flex flex-col transition-all duration-300 ${
           sidebarCollapsed ? "lg:ml-16" : "lg:ml-60"
         }`}
       >
-        <div className="max-w-6xl mx-auto p-6">
+        <div className="flex-1 flex flex-col max-w-5xl mx-auto w-full px-6 py-5">
           {/* HEADER */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-4 flex-shrink-0">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                <Icon name="MessageSquare" size={22} color="white" />
+              <div className="w-9 h-9 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-center text-primary shadow-sm">
+                <Icon name="MessageSquare" size={20} />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">Chat Assistant</h1>
-                <p className="text-muted-foreground">
-                  Chat with AI using your medical report
+                <h1 className="text-xl font-bold tracking-tight">Chat Assistant</h1>
+                <p className="text-xs text-muted-foreground">
+                  Understand your report and ask questions with AI
                 </p>
               </div>
             </div>
             {messages.length > 0 && (
               <button
                 onClick={handleClearChat}
-                className="flex items-center space-x-2 text-sm text-muted-foreground hover:text-foreground border border-border px-3 py-1.5 rounded-lg hover:bg-muted transition-colors"
+                className="flex items-center space-x-1.5 text-xs text-muted-foreground hover:text-foreground border border-border px-2.5 py-1 rounded-lg hover:bg-muted transition-colors shadow-sm bg-card"
               >
-                <Icon name="Trash2" size={14} />
+                <Icon name="Trash2" size={13} />
                 <span>Clear Chat</span>
               </button>
             )}
           </div>
 
           {/* REPORT PICKER */}
-          <ReportContextPanel
-            selectedReport={selectedReport}
-            onReportSelect={handleReportSelect}
-            reports={reports}
-          />
+          <div className="flex-shrink-0">
+            <ReportContextPanel
+              selectedReport={selectedReport}
+              onReportSelect={handleReportSelect}
+              reports={reports}
+            />
+          </div>
 
-          {/* CHAT PANEL */}
-          {selectedReport && (
-            <div className="bg-card border border-border rounded-lg p-6 mt-6">
-              <h3 className="text-lg font-semibold mb-4">Conversation</h3>
+          {/* CHAT AREA */}
+          {selectedReport ? (
+            <div className="flex-1 flex flex-col min-h-[350px] mt-4">
+              {/* Message scroll container */}
+              <div className="flex-1 overflow-y-auto pr-2 space-y-4 max-h-[calc(100vh-340px)] min-h-[250px] scrollbar-thin">
+                <div className="max-w-3xl mx-auto w-full">
+                  {messages.map((msg) => (
+                    <ChatMessage
+                      key={msg.id}
+                      isUser={msg.isUser}
+                      message={msg.text}
+                      timestamp={msg.timestamp}
+                      medicalData={msg.medicalData}
+                    />
+                  ))}
 
-              <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                {messages.map((msg) => (
-                  <ChatMessage
-                    key={msg.id}
-                    isUser={msg.isUser}
-                    message={msg.text}
-                    timestamp={msg.timestamp}
-                    medicalData={msg.medicalData}
-                  />
-                ))}
+                  {isLoading && <ChatMessage isTyping={true} isUser={false} />}
 
-                {isLoading && <ChatMessage isTyping={true} isUser={false} />}
+                  <div ref={messagesEndRef} />
+                </div>
+              </div>
 
-                <div ref={messagesEndRef} />
+              {/* INPUT AREA */}
+              <div className="flex-shrink-0 mt-3 border-t border-border/20 pt-2">
+                <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
               </div>
             </div>
-          )}
-
-          {/* EMPTY STATE */}
-          {!selectedReport && (
-            <div className="bg-card border border-border p-10 mt-6 rounded-lg text-center">
-              <Icon
-                name="Bot"
-                size={60}
-                className="mx-auto text-muted-foreground"
-              />
-              <h2 className="text-xl font-bold mt-4">Select a report to begin</h2>
-              <p className="text-muted-foreground mt-2">
-                Upload a report first, then return here to chat with AI about it.
+          ) : (
+            /* EMPTY STATE */
+            <div className="flex-1 flex flex-col items-center justify-center bg-card/30 border border-border/50 p-10 mt-6 rounded-2xl text-center shadow-sm">
+              <div className="w-14 h-14 bg-muted border border-border/60 rounded-2xl flex items-center justify-center mx-auto text-muted-foreground shadow-sm">
+                <Icon name="Bot" size={28} />
+              </div>
+              <h2 className="text-lg font-bold mt-4">Select a report to begin</h2>
+              <p className="text-sm text-muted-foreground mt-2 max-w-sm">
+                Select an uploaded medical report from the picker above to start chatting with the AI.
               </p>
             </div>
-          )}
-
-          {/* INPUT AREA */}
-          {selectedReport && (
-            <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
           )}
         </div>
       </motion.main>

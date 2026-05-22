@@ -41,22 +41,13 @@ HISTORY_DB = Path(__file__).parent / "medical_history.db"
 SYSTEM_PROMPT = """You are a warm, knowledgeable Medical Report Explanation Assistant.
 
 STRICT RULES:
-1. Answer ONLY using the provided medical knowledge context and report data. Do NOT invent medical facts from general training.
+1. Answer ONLY using the provided medical knowledge context and report data. Do NOT invent or guess medical facts.
 2. If the context does not cover the question, say exactly: "I don't have enough information on that — please consult your doctor."
 3. NEVER make a diagnosis. You explain test results; only doctors diagnose.
 4. Always end your response with: "Please consult your doctor for personalized advice."
 5. When you reference information, mention the source (e.g., "According to MedlinePlus...").
 6. Speak warmly and clearly, as if explaining to a concerned family member.
-7. IMPORTANT: Answer the SPECIFIC question asked. If the user asks for precautions → give precautions. If they ask about diet → give diet advice. If they ask to explain the report → explain it. Do NOT always re-explain every test when a focused question is asked.
-8. Keep responses focused and under 300 words unless a detailed summary is explicitly requested.
-
-FORMATTING (ChatGPT Style):
-- Use clean Markdown: ATX subheaders (### ), bold text, bullet points.
-- Status circle emojis in headers when breaking down individual tests: `🟢` normal, `🟡` moderate deviation, `🔴` severe deviation.
-- Use `👉` for key callout points. Use `1. **Test Name**` for numbered lists.
-- For full report explanations: use per-test subheaders + `### 🧠 **Simple Summary**` at the end.
-- For focused answers (precautions, diet, specific test): be concise, no need for per-test headers.
-- Never use Setext-style underlines (`===` or `---` underneath headers)."""
+7. Keep responses focused and under 300 words unless a detailed summary is explicitly requested."""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -207,28 +198,6 @@ def classify_risk(
     ref_low: Optional[float],
     ref_high: Optional[float],
 ) -> dict:
-    # Ensure value is numeric
-    if value is None or isinstance(value, str):
-        return {"level": "Unknown", "alert": "", "status": "unknown"}
-    
-    try:
-        value = float(value) if not isinstance(value, (int, float)) else value
-    except (ValueError, TypeError):
-        return {"level": "Unknown", "alert": "", "status": "unknown"}
-    
-    # Ensure reference ranges are numeric
-    if ref_low is not None:
-        try:
-            ref_low = float(ref_low) if not isinstance(ref_low, (int, float)) else ref_low
-        except (ValueError, TypeError):
-            ref_low = None
-    
-    if ref_high is not None:
-        try:
-            ref_high = float(ref_high) if not isinstance(ref_high, (int, float)) else ref_high
-        except (ValueError, TypeError):
-            ref_high = None
-    
     tl = test_name.lower()
 
     for substr, condition, level, msg in RISK_OVERRIDES:
@@ -554,46 +523,20 @@ class GroqClient:
 
 def detect_intent(query: str, parsed_data: dict) -> dict:
     """
-    Detect if question is about the report or general medical knowledge.
+    Fast-path for unambiguous structural intents only.
+    Everything else goes to build_smart_response() so the LLM can reason
+    freely over the full report + KB.
     """
     ql = query.lower()
 
-    # Report-specific indicators — checked FIRST with priority
-    report_keywords = ["my", "i have", "my results", "my report", "is my", "my value", "explain my",
-                       "what does my", "why is my", "should i worry", "am i", "my data",
-                       "explain the report", "explain my report", "explain report",
-                       "explain the results", "the report", "these results", "this report",
-                       "what does it mean", "what does this mean", "interpret",
-                       # precaution / lifestyle / diet follow-up questions
-                       "precaution", "precautions", "what should i", "what can i", "should i eat",
-                       "what to eat", "what to avoid", "diet", "foods", "lifestyle", "exercise",
-                       "next steps", "follow up", "follow-up", "what tests", "worry about"]
-    
-    # General knowledge indicators — only triggers when NO report context is present
-    general_keywords = ["what is", "how", "define", "tell me about", "information about",
-                        "normal range", "causes of", "symptoms of", "treatment for"]
-    
-    # Check if question is about the report
     if any(k in ql for k in ["summary", "summarize", "overview", "all results", "full report"]):
-        return {"type": "SUMMARY", "use_report": True}
-    
+        return {"type": "SUMMARY"}
+
     if any(k in ql for k in ["trend", "over time", "previous report", "compare", "history"]):
-        return {"type": "TREND", "use_report": True}
-    
-    # Explicit report reference — always use report data
-    if any(k in ql for k in report_keywords):
-        return {"type": "SMART_GENERAL", "use_report": True}
-    
-    # If report data exists and the word "explain" or "report" is present, use report
-    if parsed_data and any(k in ql for k in ["explain", "report", "results", "test", "value"]):
-        return {"type": "SMART_GENERAL", "use_report": True}
-    
-    # Explicit general knowledge question (no report data needed)
-    if any(k in ql for k in general_keywords):
-        return {"type": "SMART_GENERAL", "use_report": False}
-    
-    # Default: include report if it exists
-    return {"type": "SMART_GENERAL", "use_report": len(parsed_data) > 0}
+        return {"type": "TREND"}
+
+    # Everything else — let the LLM handle it with full context
+    return {"type": "SMART_GENERAL"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -668,53 +611,52 @@ def build_smart_response(
 ) -> dict:
     """
     Universal LLM-powered handler.
-    Detects intent and conditionally includes report data.
+
+    Injects the FULL report + relevant KB articles into every call so the LLM
+    can answer ANY natural-language question without predefined patterns:
+      - "Am I healthy?"
+      - "Should I worry about my kidneys?"
+      - "What should I eat?"
+      - "Explain my glucose"
+      - "Is my thyroid OK?"
+      - "What does high creatinine mean for me?"
     """
-    
-    # Detect if this is a general knowledge or report-specific question
-    intent = detect_intent(query, parsed_data)
-    use_report = intent.get("use_report", True)
 
-    # ── 1. Full report context (only if question is report-specific) ──
-    report_lines, risk_flags = [], []
-    if use_report and parsed_data:
-        report_lines, risk_flags = build_full_report_context(parsed_data, kb)
+    # ── 1. Full report context with inline KB advice ──────────────────────────
+    report_lines, risk_flags = build_full_report_context(parsed_data, kb)
 
-    # ── 2. Trend data (only for report-specific questions) ─────────────
+    # ── 2. Trend data for every abnormal test ─────────────────────────────────
     trend_lines: list[str] = []
-    if use_report and parsed_data:
-        for test_name in parsed_data:
-            history = get_test_history(test_name, session_id)
-            trend = detect_trend(history)
-            if trend:
-                trend_lines.append(f"  {test_name.title()}: {trend}")
+    for test_name in parsed_data:
+        history = get_test_history(test_name, session_id)
+        trend = detect_trend(history)
+        if trend:
+            trend_lines.append(f"  {test_name.title()}: {trend}")
 
-    # ── 3. KB articles matching the query keywords ────────────────────
+    # ── 3. KB articles matching the query keywords ────────────────────────────
     kb_articles = kb.search_kb_for_query(query)
 
-    # ── 4. Conversation history ─────────────────────────────────────────
+    # ── 4. Conversation history ───────────────────────────────────────────────
     history_text = "\n".join(
         f"  {m['role'].title()}: {m['content'][:300]}" for m in chat_history[-6:]
     ) or "[Start of conversation]"
 
-    # ── 5. Patient info header ──────────────────────────────────────────
+    # ── 5. Patient info header ────────────────────────────────────────────────
     patient_str = ""
-    if use_report and patient_info:
+    if patient_info:
         patient_str = (
             f"Patient: {patient_info.get('name', 'Unknown')}, "
             f"Age: {patient_info.get('age', '?')}, "
             f"Gender: {patient_info.get('gender', '?')}"
         )
 
-    # ── 6. Assemble prompt ──────────────────────────────────────────────
-    if use_report and parsed_data:
-        # Include full report context
-        report_block  = "\n".join(report_lines)  if report_lines  else "No report uploaded yet."
-        flags_block   = "\n".join(risk_flags)    if risk_flags    else "None — all values are within normal range."
-        trends_block  = "\n".join(trend_lines)   if trend_lines   else "No historical trend data available."
-        kb_block      = "\n\n---\n\n".join(kb_articles) if kb_articles else "No additional KB articles matched this query."
+    # ── 6. Assemble prompt ────────────────────────────────────────────────────
+    report_block  = "\n".join(report_lines)  if report_lines  else "No report uploaded yet."
+    flags_block   = "\n".join(risk_flags)    if risk_flags    else "None — all values are within normal range."
+    trends_block  = "\n".join(trend_lines)   if trend_lines   else "No historical trend data available."
+    kb_block      = "\n\n---\n\n".join(kb_articles) if kb_articles else "No additional KB articles matched this query."
 
-        prompt = f"""
+    prompt = f"""
 {"PATIENT INFO: " + patient_str if patient_str else ""}
 
 ══ FULL REPORT DATA (every test from the uploaded PDF) ══
@@ -736,70 +678,23 @@ def build_smart_response(
 "{query}"
 
 ══ INSTRUCTIONS ══
-You have the patient's complete lab report above. Directly answer the user's question using this data.
+You have the patient's complete lab report above. Use it to answer the question directly.
 
-ANSWER BY QUESTION TYPE — read the question carefully and respond accordingly:
-- For "explain my report" / "what do my results mean?" → give a full structured breakdown with a subheader per abnormal test and a 🧠 Simple Summary at the end.
-- For specific test questions ("what does my glucose mean?", "explain my RBC") → find that test in the report, state its value, reference range, risk level, causes, and advice. Keep focused.
-- For general health questions ("am I healthy?", "what should I worry about?") → summarise the ABNORMAL FLAGS section, reassure about normal values. Keep concise.
-- For precaution / lifestyle / diet questions ("what precautions should I take?", "what should I eat?", "what should I avoid?") → pull from the inline KB diet advice and causes in the report lines. List practical, specific precautions based on the patient's actual abnormal values. Do NOT re-explain the tests — just answer the precaution question directly.
-- For follow-up / next-steps questions ("what tests should I do next?") → use the KB follow-up tests data for the abnormal tests. List only what is in the KB.
+- For specific test questions ("what does my glucose mean?") → find that test in the report, state its value, reference range, risk level, causes, and advice.
+- For general health questions ("am I healthy?", "what should I worry about?") → use the ABNORMAL FLAGS section to summarise concerns and reassure about normal values.
+- For lifestyle/diet questions → pull from the inline KB diet advice in the report lines.
 - For trend questions → use the HISTORICAL TRENDS section.
 - For disease/condition questions → use the KB articles provided.
 - If something is genuinely not in the data, say: "I don't have enough information on that — please consult your doctor."
-
-FORMATTING RULES (apply based on answer type above):
-- Use clean Markdown with ATX subheaders (`### `), bold text, and bullet points.
-- Use status circle emojis in headers ONLY when breaking down individual test results:
-  * `🟢` for normal range values, `🟡` for moderate deviations, `🔴` for severe/critical deviations.
-- Use `👉` for key callout points under list items.
-- For short focused answers (precautions, diet, specific test) — keep under 250 words, no need for per-test headers.
-- For full explanations — include a `### 🧠 **Simple Summary**` section at the end.
-- Always cite the KB source when referencing medical knowledge (e.g., "According to MedlinePlus...").
+- Always cite the KB source when referencing medical knowledge (e.g. "According to MedlinePlus...").
 - Always end with: "Please consult your doctor for personalized advice."
-- Be warm, clear, and directly answer what was asked.
-"""
-    else:
-        # General knowledge question - no report data
-        kb_block = "\n\n---\n\n".join(kb_articles) if kb_articles else "No specific information available."
-        
-        prompt = f"""
-══ MEDICAL KNOWLEDGE BASE (from trusted medical sources) ══
-{kb_block}
-
-══ USER QUESTION ══
-"{query}"
-
-══ STRICT INSTRUCTIONS ══
-You MUST answer ONLY using the information in the Medical Knowledge Base above.
-Do NOT add any additional information from your general training data.
-Do NOT mention tests, conditions, or treatments that are NOT in the KB.
-
-STYLE & FORMATTING RULES (ChatGPT Style):
-1. Output in clean, beautifully structured Markdown using a modern, easy-to-read ChatGPT format.
-2. Organize sections with bold headers and descriptive emojis:
-   * Green circle `🟢` ONLY for values that lie in the normal range (e.g., "🟢 If [Test Name] is Normal").
-   * Yellow circle `🟡` for moderate high, moderate low, or mild / slight deviations (e.g., "🟡 If [Test Name] is Moderately High" or "🟡 If [Test Name] is Moderately Low").
-   * Red circle `🔴` for high or low values that represent severe or critical deviations (e.g., "🔴 If [Test Name] is High" or "🔴 If [Test Name] is Low").
-   * Replace "[Test Name]" with the actual test being discussed in the query.
-3. When listing tests or follow-up steps, format items beautifully:
-   * Numbered or bulleted test names must be in bold (e.g., `1. **Complete Blood Count (CBC)**`).
-   * Under each item, add a short, concise description as a sub-bullet.
-   * Use the hand pointing emoji `👉` for callout sub-points detailing implications or results (e.g., `👉 Confirms iron deficiency anemia`).
-4. Always structure the answer using these elements, including an empathetic introductory paragraph, structured sections, and a "🧠 Simple Summary" section at the end.
-5. Offer the patient a personalized invitation to share details (e.g., "If you want, tell me your Hb value and symptoms, and I can suggest exact tests you should do next").
-6. If asked about follow-up tests, ONLY mention/list the ones explicitly listed in the KB. Do not add complementary tests or advice not in the KB.
-7. If something is not in the KB, say: "This information is not available in my medical knowledge base. Please consult your doctor."
-8. Always cite the exact sources listed in the KB (e.g., "According to MedlinePlus...").
-9. Always end with: "Please consult your doctor for personalized advice."
-
-Remember: ONLY answer with KB data. Format beautifully. No external knowledge.
+- Be warm, clear, and concise (under 300 words unless a full summary is requested).
 """
 
     answer = groq.chat([{"role": "user", "content": prompt}], max_tokens=900)
     return {
         "answer": answer,
-        "source": "knowledge_base" if not use_report else "report+knowledge_base",
+        "source": "report+knowledge_base",
         "risk_flags": risk_flags,
         "trends": trend_lines,
     }
@@ -921,3 +816,306 @@ def build_trend_response(parsed_data: dict, session_id: str) -> dict:
     return {"answer": answer, "trends": trends}
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# FASTAPI APP
+# ─────────────────────────────────────────────────────────────────────────────
+
+app = FastAPI(
+    title="Medical Report Explanation API",
+    description=(
+        "Upload lab reports and ask anything — powered by Groq LLM "
+        "and a curated medical knowledge base. Every question is answered "
+        "from your actual report data."
+    ),
+    version="3.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Global resources
+kb: KnowledgeBase = None
+groq_client: GroqClient = None
+# In-memory session store  { session_id: { parsed_data, patient_info } }
+session_store: dict = {}
+
+
+@app.on_event("startup")
+async def startup():
+    global kb, groq_client
+    init_db()
+    kb = KnowledgeBase(KNOWLEDGE_PATH)
+    try:
+        groq_client = GroqClient()
+        logger.info("Groq client initialized")
+    except Exception as e:
+        logger.error(f"Groq init failed: {e}")
+
+
+# ─── Pydantic models ──────────────────────────────────────────────────────────
+
+class ChatRequest(BaseModel):
+    session_id: str
+    message: str
+
+
+class ChatResponse(BaseModel):
+    session_id: str
+    answer: str
+    intent: str
+    metadata: dict = {}
+
+
+class ReportUploadResponse(BaseModel):
+    session_id: str
+    tests_found: int
+    tests: dict
+    patient_info: dict
+    risk_flags: list
+    message: str
+
+
+# ─── Routes ───────────────────────────────────────────────────────────────────
+
+@app.get("/", tags=["Health"])
+def root():
+    return {
+        "status": "ok",
+        "message": "Medical Report Explanation API v3.0",
+        "endpoints": [
+            "/upload", "/chat", "/summary/{session_id}",
+            "/history/{test_name}", "/knowledge/tests", "/knowledge/diseases",
+        ],
+    }
+
+
+@app.get("/health", tags=["Health"])
+def health():
+    return {
+        "status": "healthy",
+        "kb_loaded": kb is not None,
+        "groq_connected": groq_client is not None,
+        "groq_model": groq_client.model if groq_client else None,
+        "tests_in_kb": len(kb.tests) if kb else 0,
+        "diseases_in_kb": len(kb.diseases) if kb else 0,
+    }
+
+
+@app.post("/upload", response_model=ReportUploadResponse, tags=["Reports"])
+async def upload_report(
+    file: UploadFile = File(...),
+    session_id: str = Query(default="default"),
+    report_date: str = Query(default=None),
+):
+    """Upload a lab report PDF. Extracted test values are stored and linked to the session."""
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
+
+    if report_date is None:
+        report_date = datetime.today().strftime("%Y-%m-%d")
+
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp.write(await file.read())
+        tmp_path = tmp.name
+
+    parser = MedicalReportParser()
+    parsed = parser.extract_from_pdf(tmp_path)
+    Path(tmp_path).unlink(missing_ok=True)
+
+    if not parsed:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Could not extract structured test data from the PDF. "
+                "Ensure it is a digital (not scanned) lab report, or install "
+                "easyocr/pymupdf for OCR support."
+            ),
+        )
+
+    session_store[session_id] = {
+        "parsed_data": parsed,
+        "patient_info": parser.patient_info,
+    }
+
+    save_report(session_id, file.filename, parsed, report_date)
+
+    risk_flags = []
+    tests_out = {}
+    for test_name, d in parsed.items():
+        kb_info = kb.get_test(test_name)
+        ref_low = d.get("reference_low")
+        ref_high = d.get("reference_high")
+        if kb_info and (ref_low is None or ref_high is None):
+            kb_ref = kb_info.get("reference_ranges", {}).get("default", {})
+            ref_low = ref_low or kb_ref.get("low")
+            ref_high = ref_high or kb_ref.get("high")
+
+        risk = classify_risk(test_name, d["value"], ref_low, ref_high)
+        full_name = kb_info["full_name"] if kb_info else test_name.title()
+
+        tests_out[test_name] = {
+            "full_name": full_name,
+            "value": d["value"],
+            "unit": d.get("unit", ""),
+            "reference_range": {"low": ref_low, "high": ref_high},
+            "risk_level": risk["level"],
+            "status": risk["status"],
+            "alert": risk["alert"],
+        }
+        if risk["level"] not in ("Normal", "Unknown"):
+            risk_flags.append({
+                "test": full_name,
+                "risk_level": risk["level"],
+                "alert": risk["alert"],
+            })
+
+    return ReportUploadResponse(
+        session_id=session_id,
+        tests_found=len(parsed),
+        tests=tests_out,
+        patient_info=parser.patient_info,
+        risk_flags=risk_flags,
+        message=f"Report uploaded. Found {len(parsed)} test(s). {len(risk_flags)} need attention.",
+    )
+
+
+@app.post("/chat", response_model=ChatResponse, tags=["Chat"])
+async def chat(request: ChatRequest):
+    """
+    Main chat endpoint.
+    Every question — no matter how phrased — is answered using the full
+    uploaded report + knowledge base via the LLM. No predefined query patterns.
+    """
+    if not groq_client:
+        raise HTTPException(status_code=503, detail="Groq LLM not available. Check GROQ_API_KEY.")
+
+    session_id = request.session_id
+    query = request.message.strip()
+
+    session = session_store.get(session_id, {})
+    parsed_data = session.get("parsed_data", {})
+    patient_info = session.get("patient_info", {})
+    chat_history = get_chat_history(session_id)
+
+    # Lightweight intent detection — only for structural shortcuts
+    intent_info = detect_intent(query, parsed_data)
+    intent_type = intent_info["type"]
+
+    save_chat(session_id, "user", query)
+
+    if intent_type == "SUMMARY":
+        result = build_summary_response(parsed_data, kb, groq_client, patient_info)
+
+    elif intent_type == "TREND":
+        result = build_trend_response(parsed_data, session_id)
+
+    else:
+        # SMART_GENERAL: LLM answers freely from the full report + KB
+        # This covers: specific tests, diseases, diet questions, general health
+        # queries, comparisons, "what should I worry about?", and anything else.
+        result = build_smart_response(
+            query=query,
+            parsed_data=parsed_data,
+            patient_info=patient_info,
+            kb=kb,
+            groq=groq_client,
+            chat_history=chat_history,
+            session_id=session_id,
+        )
+
+    answer = result.get("answer", "I'm sorry, I couldn't generate a response. Please try again.")
+    save_chat(session_id, "assistant", answer)
+
+    return ChatResponse(
+        session_id=session_id,
+        answer=answer,
+        intent=intent_type,
+        metadata={k: v for k, v in result.items() if k != "answer"},
+    )
+
+
+@app.get("/summary/{session_id}", tags=["Reports"])
+async def get_summary(session_id: str):
+    """Get a full AI-generated summary of the uploaded report for a session."""
+    if not groq_client:
+        raise HTTPException(status_code=503, detail="Groq LLM not available.")
+    session = session_store.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found or no report uploaded.")
+    return build_summary_response(
+        session["parsed_data"], kb, groq_client, session["patient_info"]
+    )
+
+
+@app.get("/history/{test_name}", tags=["History"])
+def test_history(test_name: str, session_id: Optional[str] = Query(default=None)):
+    """Get historical values for a specific test with trend analysis."""
+    history = get_test_history(test_name, session_id)
+    trend = detect_trend(history)
+    return {
+        "test_name": test_name,
+        "history": history,
+        "trend": trend,
+        "data_points": len(history),
+    }
+
+
+@app.get("/knowledge/tests", tags=["Knowledge Base"])
+def list_tests():
+    """List all tests available in the knowledge base."""
+    return {
+        "count": len(kb.tests),
+        "tests": [
+            {"key": k, "full_name": v.get("full_name"), "category": v.get("category")}
+            for k, v in kb.tests.items()
+        ],
+    }
+
+
+@app.get("/knowledge/tests/{test_name}", tags=["Knowledge Base"])
+def get_test_info(test_name: str):
+    """Get full knowledge base entry for a specific test."""
+    info = kb.get_test(test_name)
+    if not info:
+        raise HTTPException(status_code=404, detail=f"Test '{test_name}' not found in knowledge base.")
+    return info
+
+
+@app.get("/knowledge/diseases", tags=["Knowledge Base"])
+def list_diseases():
+    """List all diseases/conditions in the knowledge base."""
+    return {
+        "count": len(kb.diseases),
+        "diseases": [{"key": k, "name": v.get("name")} for k, v in kb.diseases.items()],
+    }
+
+
+@app.get("/knowledge/diseases/{disease_name}", tags=["Knowledge Base"])
+def get_disease_info(disease_name: str):
+    """Get full knowledge base entry for a specific disease."""
+    info = kb.get_disease(disease_name)
+    if not info:
+        raise HTTPException(status_code=404, detail=f"Disease '{disease_name}' not found.")
+    return info
+
+
+@app.delete("/session/{session_id}", tags=["Sessions"])
+def clear_session(session_id: str):
+    """Clear report data and chat history for a session."""
+    session_store.pop(session_id, None)
+    con = sqlite3.connect(HISTORY_DB)
+    con.execute("DELETE FROM chat_history WHERE session_id=?", (session_id,))
+    con.commit()
+    con.close()
+    return {"message": f"Session {session_id} cleared."}
+
+
+@app.get("/sessions/{session_id}/chat", tags=["Sessions"])
+def get_session_chat(session_id: str, limit: int = Query(default=20)):
+    """Retrieve chat history for a session."""
+    return {"session_id": session_id, "history": get_chat_history(session_id, limit)}

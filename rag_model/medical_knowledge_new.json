@@ -1,0 +1,393 @@
+{
+  "metadata": {
+    "generated_at": "2026-05-20T17:59:47.470604Z",
+    "total_tests": 25,
+    "description": "Structured medical knowledge base for 25 common blood tests"
+  },
+  "tests": {
+    "hemoglobin": {
+      "full_name": "Hemoglobin",
+      "alternative_names": ["Hgb", "Hb"],
+      "description": "Hemoglobin test measures the levels of hemoglobin in your blood. Hemoglobin is an iron-rich protein in your red blood cells that carries oxygen.",
+      "reference_ranges": {
+        "default": {"low": 12.0, "high": 17.5}
+      },
+      "unit": "g/dL",
+      "risk_levels": {
+        "Critical Low": "< 7.0 g/dL",
+        "Low": "< 12.0 g/dL",
+        "Normal": "12.0–17.5 g/dL",
+        "High": "> 17.5 g/dL"
+      },
+      "low_causes": ["Iron deficiency anemia", "Chronic bleeding", "Bone marrow disorders"],
+      "high_causes": ["Dehydration", "Polycythemia vera", "Smoking"],
+      "sources": ["MedlinePlus", "NHS UK", "Merck Manual"]
+    },
+    "rbc": {
+      "full_name": "RBC",
+      "alternative_names": ["Red Blood Cell Count", "Erythrocyte Count"],
+      "description": "RBC count measures the number of red blood cells in your blood.",
+      "reference_ranges": {
+        "default": {"low": 4.0, "high": 5.5}
+      },
+      "unit": "million cells/µL",
+      "risk_levels": {
+        "Low": "< 4.0 million/µL",
+        "Normal": "4.0–5.5 million/µL",
+        "High": "> 5.5 million/µL"
+      },
+      "low_causes": ["Anemia", "Blood loss", "Bone marrow failure"],
+      "high_causes": ["Dehydration", "Lung disease", "Polycythemia"],
+      "sources": ["MedlinePlus", "Healthline", "Mount Sinai"]
+    },
+    "wbc": {
+      "full_name": "WBC",
+      "alternative_names": ["White Blood Cell Count", "Leukocyte Count"],
+      "description": "WBC measures the number of white blood cells in your blood, which are part of your immune system.",
+      "reference_ranges": {
+        "default": {"low": 4.5, "high": 11.0}
+      },
+      "unit": "cells/µL",
+      "risk_levels": {
+        "Critical Low": "< 2,000 cells/µL",
+        "Low": "< 4,500 cells/µL",
+        "Normal": "4,500–11,000 cells/µL",
+        "High": "> 11,000 cells/µL"
+      },
+      "low_causes": ["Infection", "Bone marrow failure", "Medications"],
+      "high_causes": ["Infection", "Leukemia", "Inflammation"],
+      "sources": ["MedlinePlus", "Healthline", "Mount Sinai", "Merck Manual"]
+    },
+    "platelet count": {
+      "full_name": "Platelet Count",
+      "alternative_names": ["PLT", "Thrombocyte Count"],
+      "description": "Platelet count measures the number of platelets in your blood, which help with blood clotting.",
+      "reference_ranges": {
+        "default": {"low": 150, "high": 400}
+      },
+      "unit": "cells/µL",
+      "risk_levels": {
+        "Critical Low": "< 20,000/µL",
+        "Low": "< 150,000/µL",
+        "Normal": "150,000–400,000/µL",
+        "High": "> 400,000/µL"
+      },
+      "low_causes": ["Thrombocytopenia", "Bone marrow failure", "Medication effects"],
+      "high_causes": ["Thrombocytosis", "Inflammation", "Iron deficiency"],
+      "sources": ["MedlinePlus", "Mount Sinai", "Merck Manual"]
+    },
+    "hematocrit": {
+      "full_name": "Hematocrit",
+      "alternative_names": ["HCT", "Packed Cell Volume (PCV)"],
+      "description": "Hematocrit test measures the percentage of your blood that is made up of red blood cells.",
+      "reference_ranges": {
+        "default": {"low": 36.0, "high": 53.0}
+      },
+      "unit": "%",
+      "risk_levels": {
+        "Low": "< 36%",
+        "Normal": "36–53%",
+        "High": "> 53%"
+      },
+      "low_causes": ["Anemia", "Blood loss", "Bone marrow disorders"],
+      "high_causes": ["Dehydration", "Polycythemia", "Lung disease"],
+      "sources": ["MedlinePlus", "Mount Sinai"]
+    },
+    "mcv": {
+      "full_name": "MCV",
+      "alternative_names": ["Mean Corpuscular Volume", "Mean Cell Volume"],
+      "description": "MCV measures the average size of your red blood cells.",
+      "reference_ranges": {
+        "default": {"low": 80.0, "high": 100.0}
+      },
+      "unit": "fL",
+      "risk_levels": {
+        "Low (Microcytic)": "< 80 fL",
+        "Normal (Normocytic)": "80–100 fL",
+        "High (Macrocytic)": "> 100 fL"
+      },
+      "low_causes": ["Iron deficiency", "Thalassemia", "Chronic disease"],
+      "high_causes": ["Vitamin B12 deficiency", "Folate deficiency", "Alcoholism"],
+      "sources": ["MedlinePlus", "Mount Sinai"]
+    },
+    "glucose": {
+      "full_name": "Glucose",
+      "alternative_names": ["Blood Sugar", "Fasting Blood Glucose", "FBG"],
+      "description": "Glucose test measures the glucose levels in your blood, which is your body's main source of energy.",
+      "reference_ranges": {
+        "default": {"low": 70.0, "high": 99.0}
+      },
+      "unit": "mg/dL",
+      "risk_levels": {
+        "Critical Low": "< 54 mg/dL",
+        "Low": "54–69 mg/dL",
+        "Normal": "70–99 mg/dL",
+        "Pre-diabetic": "100–125 mg/dL",
+        "Diabetic": "≥ 126 mg/dL"
+      },
+      "low_causes": ["Hypoglycemia", "Insulin overdose", "Starvation"],
+      "high_causes": ["Diabetes", "Stress", "Infection"],
+      "sources": ["MedlinePlus", "Healthline", "WHO", "Mount Sinai", "Merck Manual"]
+    },
+    "hba1c": {
+      "full_name": "HbA1c",
+      "alternative_names": ["Glycated Hemoglobin", "A1C", "Hemoglobin A1c"],
+      "description": "HbA1c test shows your average blood glucose level over the past 2-3 months.",
+      "reference_ranges": {
+        "default": {"low": 0.0, "high": 5.7}
+      },
+      "unit": "%",
+      "risk_levels": {
+        "Normal": "< 5.7%",
+        "Pre-diabetes": "5.7–6.4%",
+        "Diabetes": "≥ 6.5%"
+      },
+      "low_causes": ["Low blood sugar", "Hypoglycemia"],
+      "high_causes": ["Uncontrolled diabetes", "High average blood sugar"],
+      "sources": ["MedlinePlus", "Healthline", "WebMD", "NHS UK", "Mayo Clinic", "Mount Sinai", "Merck Manual"]
+    },
+    "total cholesterol": {
+      "full_name": "Total Cholesterol",
+      "alternative_names": ["TC", "Serum Cholesterol"],
+      "description": "Total cholesterol test measures the amount of cholesterol and triglycerides in your blood.",
+      "reference_ranges": {
+        "default": {"low": 0.0, "high": 200.0}
+      },
+      "unit": "mg/dL",
+      "risk_levels": {
+        "Desirable": "< 200 mg/dL",
+        "Borderline": "200–239 mg/dL",
+        "High Risk": "≥ 240 mg/dL"
+      },
+      "low_causes": ["Malnutrition", "Malabsorption", "Liver disease"],
+      "high_causes": ["Poor diet", "Sedentary lifestyle", "Genetics"],
+      "sources": ["MedlinePlus", "Healthline", "WebMD", "NHS UK", "Mayo Clinic", "Mount Sinai", "Harvard Health"]
+    },
+    "hdl": {
+      "full_name": "HDL",
+      "alternative_names": ["High-Density Lipoprotein", "Good Cholesterol"],
+      "description": "HDL cholesterol is the good cholesterol that removes bad cholesterol from your bloodstream.",
+      "reference_ranges": {
+        "default": {"low": 40.0, "high": 60.0}
+      },
+      "unit": "mg/dL",
+      "risk_levels": {
+        "High Risk (Low HDL)": "< 40 mg/dL",
+        "Normal": "40–60 mg/dL",
+        "Protective": "> 60 mg/dL"
+      },
+      "low_causes": ["Sedentary lifestyle", "Poor diet", "Smoking"],
+      "high_causes": ["Regular exercise", "Healthy diet", "Genetics"],
+      "sources": ["MedlinePlus", "WebMD", "NHS UK", "Mount Sinai", "Harvard Health"]
+    },
+    "ldl": {
+      "full_name": "LDL",
+      "alternative_names": ["Low-Density Lipoprotein", "Bad Cholesterol"],
+      "description": "LDL cholesterol is the bad cholesterol that can build up in your arteries.",
+      "reference_ranges": {
+        "default": {"low": 0.0, "high": 100.0}
+      },
+      "unit": "mg/dL",
+      "risk_levels": {
+        "Optimal": "< 100 mg/dL",
+        "Borderline": "130–159 mg/dL",
+        "High": "≥ 160 mg/dL"
+      },
+      "low_causes": ["Malnutrition", "Liver disease", "Malabsorption"],
+      "high_causes": ["Poor diet", "Sedentary lifestyle", "Genetics"],
+      "sources": ["MedlinePlus", "Healthline", "NHS UK", "Mount Sinai"]
+    },
+    "triglycerides": {
+      "full_name": "Triglycerides",
+      "alternative_names": ["TG", "Triacylglycerol"],
+      "description": "Triglycerides are a type of fat in your blood that come from food and extra calories.",
+      "reference_ranges": {
+        "default": {"low": 0.0, "high": 150.0}
+      },
+      "unit": "mg/dL",
+      "risk_levels": {
+        "Normal": "< 150 mg/dL",
+        "Borderline": "150–199 mg/dL",
+        "High": "200–499 mg/dL",
+        "Very High": "≥ 500 mg/dL"
+      },
+      "low_causes": ["Malnutrition", "Malabsorption"],
+      "high_causes": ["High sugar intake", "Excess calories", "Alcohol"],
+      "sources": ["MedlinePlus", "Healthline", "NHS UK", "Mayo Clinic", "Mount Sinai"]
+    },
+    "creatinine": {
+      "full_name": "Creatinine",
+      "alternative_names": ["Serum Creatinine", "SCr"],
+      "description": "Creatinine test measures how well your kidneys are filtering waste products.",
+      "reference_ranges": {
+        "default": {"low": 0.6, "high": 1.3}
+      },
+      "unit": "mg/dL",
+      "risk_levels": {
+        "Normal": "0.6–1.3 mg/dL",
+        "Mild Elevation": "1.3–2.0 mg/dL",
+        "Moderate": "2.0–5.0 mg/dL",
+        "Severe": "> 5.0 mg/dL"
+      },
+      "low_causes": ["Low muscle mass", "Malnutrition"],
+      "high_causes": ["Kidney disease", "Muscle damage", "Dehydration"],
+      "sources": ["MedlinePlus", "WebMD", "NHS UK", "Mayo Clinic", "Mount Sinai"]
+    },
+    "bun": {
+      "full_name": "Urea (BUN)",
+      "alternative_names": ["Blood Urea Nitrogen", "Serum Urea"],
+      "description": "BUN test measures urea nitrogen, a waste product of protein metabolism.",
+      "reference_ranges": {
+        "default": {"low": 7.0, "high": 20.0}
+      },
+      "unit": "mg/dL",
+      "risk_levels": {
+        "Normal": "7–20 mg/dL",
+        "Elevated": "> 20 mg/dL",
+        "Critically High": "> 100 mg/dL"
+      },
+      "low_causes": ["Liver disease", "Malnutrition", "Pregnancy"],
+      "high_causes": ["Kidney disease", "Dehydration", "High protein diet"],
+      "sources": ["Mount Sinai", "WebMD"]
+    },
+    "uric acid": {
+      "full_name": "Uric Acid",
+      "alternative_names": ["Serum Urate", "UA"],
+      "description": "Uric acid test measures the amount of uric acid in your blood.",
+      "reference_ranges": {
+        "default": {"low": 2.6, "high": 7.2}
+      },
+      "unit": "mg/dL",
+      "risk_levels": {
+        "Low": "< 2.6 mg/dL",
+        "Normal": "2.6–7.2 mg/dL",
+        "Elevated": "> 7.2 mg/dL"
+      },
+      "low_causes": ["Hypouricemia", "Xanthine oxidase deficiency"],
+      "high_causes": ["Gout", "High purine diet", "Kidney disease"],
+      "sources": ["MedlinePlus", "Healthline", "NHS UK", "Mayo Clinic", "Mount Sinai"]
+    },
+    "bilirubin": {
+      "full_name": "Bilirubin",
+      "alternative_names": ["Total Bilirubin", "Direct Bilirubin", "Indirect Bilirubin"],
+      "description": "Bilirubin test measures the levels of bilirubin in your blood.",
+      "reference_ranges": {
+        "default": {"low": 0.1, "high": 1.2}
+      },
+      "unit": "mg/dL",
+      "risk_levels": {
+        "Normal": "< 1.2 mg/dL",
+        "Mild Elevation": "1.2–3.0 mg/dL",
+        "Jaundice": "> 3.0 mg/dL"
+      },
+      "low_causes": ["Rare - usually benign"],
+      "high_causes": ["Liver disease", "Hemolysis", "Bile duct obstruction"],
+      "sources": ["MedlinePlus", "Healthline", "Mount Sinai", "NHS UK", "Merck Manual"]
+    },
+    "sgpt": {
+      "full_name": "SGPT (ALT)",
+      "alternative_names": ["ALT", "Alanine Aminotransferase"],
+      "description": "SGPT measures alanine aminotransferase, an enzyme primarily found in the liver.",
+      "reference_ranges": {
+        "default": {"low": 7.0, "high": 56.0}
+      },
+      "unit": "U/L",
+      "risk_levels": {
+        "Normal": "7–56 U/L",
+        "Mild Elevation": "56–168 U/L",
+        "Moderate": "168–560 U/L",
+        "Severe": "> 560 U/L"
+      },
+      "low_causes": ["Rare"],
+      "high_causes": ["Liver disease", "Hepatitis", "Cirrhosis"],
+      "sources": ["Mount Sinai"]
+    },
+    "sgot": {
+      "full_name": "SGOT (AST)",
+      "alternative_names": ["AST", "Aspartate Aminotransferase"],
+      "description": "SGOT measures aspartate aminotransferase, an enzyme found in liver and muscles.",
+      "reference_ranges": {
+        "default": {"low": 9.0, "high": 40.0}
+      },
+      "unit": "U/L",
+      "risk_levels": {
+        "Normal": "9–40 U/L",
+        "Elevated": "> 40 U/L",
+        "Markedly Elevated": "> 200 U/L"
+      },
+      "low_causes": ["Rare"],
+      "high_causes": ["Liver disease", "Heart attack", "Muscle injury"],
+      "sources": ["Mount Sinai"]
+    },
+    "tsh": {
+      "full_name": "TSH",
+      "alternative_names": ["Thyroid Stimulating Hormone", "Thyrotropin"],
+      "description": "TSH measures thyroid stimulating hormone which controls thyroid function.",
+      "reference_ranges": {
+        "default": {"low": 0.4, "high": 4.0}
+      },
+      "unit": "mIU/L",
+      "risk_levels": {
+        "Low (Hyperthyroid)": "< 0.4 mIU/L",
+        "Normal": "0.4–4.0 mIU/L",
+        "High (Hypothyroid)": "> 4.0 mIU/L"
+      },
+      "low_causes": ["Hyperthyroidism", "Graves disease"],
+      "high_causes": ["Hypothyroidism", "Hashimoto's thyroiditis"],
+      "sources": ["MedlinePlus", "Testing.com", "Healthline", "Mount Sinai", "Merck Manual"]
+    },
+    "t3": {
+      "full_name": "T3",
+      "alternative_names": ["Triiodothyronine", "Total T3", "Free T3"],
+      "description": "T3 measures triiodothyronine, a thyroid hormone that regulates metabolism.",
+      "reference_ranges": {
+        "default": {"low": 80.0, "high": 200.0}
+      },
+      "unit": "ng/dL",
+      "risk_levels": {
+        "Low": "< 80 ng/dL",
+        "Normal": "80–200 ng/dL",
+        "High": "> 200 ng/dL"
+      },
+      "low_causes": ["Hypothyroidism", "Iodine deficiency"],
+      "high_causes": ["Hyperthyroidism", "Graves disease"],
+      "sources": ["Healthline", "Mount Sinai", "Merck Manual"]
+    },
+    "t4": {
+      "full_name": "T4",
+      "alternative_names": ["Thyroxine", "Total T4", "Free T4"],
+      "description": "T4 measures thyroxine, the main hormone produced by the thyroid gland.",
+      "reference_ranges": {
+        "default": {"low": 5.0, "high": 12.0}
+      },
+      "unit": "µg/dL",
+      "risk_levels": {
+        "Low": "< 5.0 µg/dL",
+        "Normal": "5.0–12.0 µg/dL",
+        "High": "> 12.0 µg/dL"
+      },
+      "low_causes": ["Hypothyroidism", "Iodine deficiency"],
+      "high_causes": ["Hyperthyroidism", "Thyroiditis"],
+      "sources": ["MedlinePlus", "Healthline", "Mount Sinai", "Merck Manual"]
+    },
+    "vitamin d": {
+      "full_name": "Vitamin D",
+      "alternative_names": ["25-hydroxyvitamin D", "25(OH)D", "Calcidiol"],
+      "description": "Vitamin D test measures vitamin D levels, which is important for bone health.",
+      "reference_ranges": {
+        "default": {"low": 30.0, "high": 100.0}
+      },
+      "unit": "ng/mL",
+      "risk_levels": {
+        "Deficient": "< 20 ng/mL",
+        "Insufficient": "20–29 ng/mL",
+        "Sufficient": "30–100 ng/mL",
+        "Optimal": "40–60 ng/mL"
+      },
+      "low_causes": ["Lack of sunlight", "Poor diet", "Malabsorption"],
+      "high_causes": ["Excessive supplementation", "Hypercalcemia"],
+      "sources": ["MedlinePlus", "Healthline", "WebMD", "NHS UK", "Mayo Clinic", "Mount Sinai", "Drugs.com"]
+    }
+  },
+  "diseases": {}
+}
