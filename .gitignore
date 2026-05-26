@@ -13,4 +13,4 @@ __pycache__/
 
 # Ignore medical knowledge base files
 medical_knowledge.json
-medical_knowledge*
+medical_knowledge*"database.txt" 
