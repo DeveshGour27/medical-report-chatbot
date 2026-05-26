@@ -13,4 +13,7 @@ __pycache__/
 
 # Ignore medical knowledge base files
 medical_knowledge.json
-medical_knowledge*"database.txt" 
+medical_knowledge*
+
+# Ignore database
+rag_model/database.txt
