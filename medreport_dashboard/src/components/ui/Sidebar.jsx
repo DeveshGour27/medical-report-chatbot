@@ -8,7 +8,7 @@ const Sidebar = ({ isCollapsed = false, onToggle }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   const navigationItems = [
     {
@@ -34,7 +34,23 @@ const Sidebar = ({ isCollapsed = false, onToggle }) => {
       path: '/chat-assistant',
       icon: 'MessageSquare',
       tooltip: 'AI-powered report analysis'
-    }
+    },
+  ];
+
+  // NEW: Memory & Intelligence items (replace profile name slot)
+  const memoryItems = [
+    {
+      label: 'Health Timeline',
+      path: '/timeline',
+      icon: 'Clock',
+      tooltip: 'Your chronological health history'
+    },
+    {
+      label: 'Health Profile',
+      path: '/health-profile',
+      icon: 'HeartPulse',
+      tooltip: 'AI-generated health summary & PDF'
+    },
   ];
 
   const isActive = (path) => location?.pathname === path;
@@ -44,123 +60,130 @@ const Sidebar = ({ isCollapsed = false, onToggle }) => {
     if (!error) {
       toast.success('Signed out successfully. See you soon!');
       localStorage.removeItem('navigationState');
-      setTimeout(() => {
-        navigate('/login');
-      }, 500);
+      setTimeout(() => navigate('/login'), 500);
     } else {
       toast.error('Failed to sign out. Please try again.');
     }
   };
 
+  const NavLink = ({ item }) => (
+    <Link
+      to={item.path}
+      className={`flex items-center px-3 py-2.5 rounded-lg transition-all duration-150 ease-out group ${
+        isActive(item.path)
+          ? 'bg-primary text-primary-foreground shadow-sm'
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+      }`}
+      title={isCollapsed ? item.tooltip : ''}
+    >
+      <Icon
+        name={item.icon}
+        size={18}
+        className={`${isCollapsed ? 'mx-auto' : 'mr-3'} flex-shrink-0 transition-colors duration-150`}
+      />
+      {!isCollapsed && (
+        <span className="font-medium text-sm">{item.label}</span>
+      )}
+    </Link>
+  );
+
   return (
-    <aside 
-      className={`fixed left-0 top-0 z-100 h-full bg-card border-r border-border transition-all duration-300 ease-out ${
+    <aside
+      className={`fixed left-0 top-0 z-[100] h-full bg-card border-r border-border transition-all duration-300 ease-out ${
         isCollapsed ? 'w-16' : 'w-60'
-      } lg:translate-x-0`}
+      } lg:translate-x-0 flex flex-col`}
     >
       {/* Logo Section */}
-      <div className="flex items-center h-16 px-4 border-b border-border">
+      <div className="flex items-center h-16 px-4 border-b border-border flex-shrink-0">
         <div className="flex items-center space-x-3">
-          <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg">
-            <Icon name="Activity" size={20} color="white" />
+          <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg flex-shrink-0">
+            <Icon name="Activity" size={18} color="white" />
           </div>
           {!isCollapsed && (
             <div className="flex flex-col">
-              <span className="text-lg font-semibold text-foreground">MedReport</span>
-              <span className="text-xs text-muted-foreground">Dashboard</span>
+              <span className="text-base font-bold text-foreground leading-tight">MedReport</span>
+              <span className="text-xs text-muted-foreground">AI Assistant</span>
             </div>
           )}
         </div>
       </div>
-      {/* Navigation Menu */}
-      <nav className="flex-1 px-4 py-6 space-y-2">
-        {navigationItems?.map((item) => (
-          <Link
-            key={item?.path}
-            to={item?.path}
-            className={`flex items-center px-3 py-3 rounded-lg transition-all duration-150 ease-out group ${
-              isActive(item?.path)
-                ? 'bg-primary text-primary-foreground shadow-card'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            }`}
-            title={isCollapsed ? item?.tooltip : ''}
-          >
-            <Icon 
-              name={item?.icon} 
-              size={20} 
-              className={`${isCollapsed ? 'mx-auto' : 'mr-3'} transition-colors duration-150`}
-            />
-            {!isCollapsed && (
-              <span className="font-medium">{item?.label}</span>
-            )}
-          </Link>
+
+      {/* Navigation scroll area */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        {/* Main navigation */}
+        {navigationItems.map((item) => (
+          <NavLink key={item.path} item={item} />
         ))}
-      </nav>
-      {/* User Profile Section */}
-      <div className="border-t border-border p-4">
+
+        {/* Divider + Memory section */}
+        <div className="pt-3 pb-1">
+          {!isCollapsed && (
+            <p className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-widest px-3 mb-2">
+              Memory & Insights
+            </p>
+          )}
+          {isCollapsed && <div className="border-t border-border/40 mb-1" />}
+        </div>
+
+        {memoryItems.map((item) => (
+          <NavLink key={item.path} item={item} />
+        ))}
+
+        {/* Help link */}
+        <div className="pt-3">
+          {!isCollapsed && <div className="border-t border-border/40 mb-3" />}
+          <NavLink item={{ label: 'Help & Support', path: '/help', icon: 'HelpCircle', tooltip: 'Help & Support' }} />
+        </div>
+      </div>
+
+      {/* Bottom: Sign Out only (profile is in header) */}
+      <div className="border-t border-border p-3 flex-shrink-0">
         <div className="relative">
           <button
-            onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className={`flex items-center w-full px-3 py-3 rounded-lg transition-all duration-150 ease-out hover:bg-muted ${
+            onClick={() => setLogoutOpen(!logoutOpen)}
+            className={`flex items-center w-full px-3 py-2.5 rounded-lg transition-all duration-150 ease-out hover:bg-muted text-muted-foreground hover:text-foreground ${
               isCollapsed ? 'justify-center' : 'space-x-3'
             }`}
+            title={isCollapsed ? 'Account' : ''}
           >
-            <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center">
-              <Icon name="User" size={16} color="white" />
+            <div className="w-7 h-7 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+              <Icon name="User" size={14} className="text-primary" />
             </div>
             {!isCollapsed && (
               <>
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-medium text-foreground">
-                    {user?.username || 'User'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {user?.email || 'No email'}
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-xs font-medium text-foreground truncate">
+                    {user?.email || 'Account'}
                   </p>
                 </div>
                 <Icon
-                  name={userMenuOpen ? "ChevronUp" : "ChevronDown"}
-                  size={16}
-                  className="text-muted-foreground"
+                  name={logoutOpen ? 'ChevronUp' : 'ChevronDown'}
+                  size={14}
+                  className="text-muted-foreground flex-shrink-0"
                 />
               </>
             )}
           </button>
 
-          {/* User Dropdown Menu */}
-          {userMenuOpen && !isCollapsed && (
+          {/* Logout dropdown */}
+          {logoutOpen && !isCollapsed && (
             <>
-              {/* Invisible full-screen overlay — clicking anywhere outside closes the dropdown */}
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setUserMenuOpen(false)}
-              />
-              <div className="absolute bottom-full left-0 right-0 mb-2 bg-popover border border-border rounded-lg shadow-modal py-2 z-50">
+              <div className="fixed inset-0 z-40" onClick={() => setLogoutOpen(false)} />
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-popover border border-border rounded-xl shadow-xl py-1 z-50">
                 <Link
                   to="/profile-settings"
-                  className="flex items-center px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors duration-150"
-                  onClick={() => setUserMenuOpen(false)}
+                  className="flex items-center px-4 py-2.5 text-sm text-popover-foreground hover:bg-muted transition-colors"
+                  onClick={() => setLogoutOpen(false)}
                 >
-                  <Icon name="Settings" size={16} className="mr-3" />
-                  Settings
+                  <Icon name="Settings" size={15} className="mr-3 text-muted-foreground" />
+                  Profile Settings
                 </Link>
-                <Link
-                  to="/help"
-                  className="flex items-center px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors duration-150"
-                  onClick={() => setUserMenuOpen(false)}
-                >
-                  <Icon name="HelpCircle" size={16} className="mr-3" />
-                  Help & Support
-                </Link>
-                <hr className="my-2 border-border" />
+                <hr className="my-1 border-border" />
                 <button
-                  onClick={() => {
-                    setUserMenuOpen(false);
-                    handleLogout();
-                  }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-error hover:bg-muted transition-colors duration-150"
+                  onClick={() => { setLogoutOpen(false); handleLogout(); }}
+                  className="flex items-center w-full px-4 py-2.5 text-sm text-red-400 hover:bg-muted transition-colors"
                 >
-                  <Icon name="LogOut" size={16} className="mr-3" />
+                  <Icon name="LogOut" size={15} className="mr-3" />
                   Sign Out
                 </button>
               </div>

@@ -13,6 +13,10 @@ import UploadReport from "./pages/upload-report";
 import ProfileSettings from "./pages/profile-settings";
 import HelpSupport from "./pages/help/index.jsx";
 
+// NEW: Memory & Intelligence pages
+import Timeline from "./pages/timeline/index.jsx";
+import HealthProfile from "./pages/health-profile/index.jsx";
+
 // Auth Pages
 import Login from "./pages/auth/Login";
 import SignUp from "./pages/auth/SignUp";
@@ -44,6 +48,10 @@ const Routes = () => {
           <Route path="/chat-assistant" element={<ProtectedRoute><ChatAssistant /></ProtectedRoute>} />
           <Route path="/profile-settings" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
           <Route path="/help" element={<ProtectedRoute><HelpSupport /></ProtectedRoute>} />
+
+          {/* NEW: Memory & Intelligence Routes */}
+          <Route path="/timeline" element={<ProtectedRoute><Timeline /></ProtectedRoute>} />
+          <Route path="/health-profile" element={<ProtectedRoute><HealthProfile /></ProtectedRoute>} />
 
           {/* 404 Page */}
           <Route path="*" element={<NotFound />} />

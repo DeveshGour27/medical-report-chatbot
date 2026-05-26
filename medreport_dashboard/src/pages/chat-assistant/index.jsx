@@ -28,34 +28,57 @@ const ChatAssistant = () => {
 
   const [reports, setReports] = useState([]);
 
-  // Load persisted chat from localStorage when selectedReport changes
+  // Load persisted chat from DB backend when selectedReport changes
   useEffect(() => {
     if (user?.id && selectedReport?.id) {
-      const saved = localStorage.getItem(`chat_messages_${user.id}_${selectedReport.id}`);
-      if (saved) {
-        try { 
-          setMessages(JSON.parse(saved)); 
-        } catch { 
-          setMessages([]); 
-        }
-      } else {
-        setMessages([]); // start fresh for this report
-      }
+      loadChatHistory(selectedReport.id);
     } else {
       setMessages([]);
     }
   }, [user?.id, selectedReport?.id]);
 
-  // Save messages to localStorage whenever they change
-  useEffect(() => {
-    if (user?.id && selectedReport?.id) {
-      if (messages.length > 0) {
-        localStorage.setItem(`chat_messages_${user.id}_${selectedReport.id}`, JSON.stringify(messages));
-      } else {
-        localStorage.removeItem(`chat_messages_${user.id}_${selectedReport.id}`);
+  const loadChatHistory = async (reportId) => {
+    // Try to load from backend DB first
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_CHAT}/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { reportId, limit: 100 },
+        timeout: 8000,
+      });
+      const history = res.data.history || [];
+      if (history.length > 0) {
+        const formatted = history.map((msg, i) => ({
+          id: msg._id || i,
+          text: msg.content,
+          isUser: msg.role === 'user',
+          timestamp: msg.createdAt
+            ? new Date(msg.createdAt).toLocaleTimeString()
+            : '',
+        }));
+        setMessages(formatted);
+        return;
       }
+    } catch (err) {
+      console.warn('[CHAT] Could not load history from DB, falling back to localStorage');
+    }
+
+    // Fallback: localStorage
+    const saved = localStorage.getItem(`chat_messages_${user.id}_${reportId}`);
+    if (saved) {
+      try { setMessages(JSON.parse(saved)); } catch { setMessages([]); }
+    } else {
+      setMessages([]);
+    }
+  };
+
+  // Still cache to localStorage as backup
+  useEffect(() => {
+    if (user?.id && selectedReport?.id && messages.length > 0) {
+      localStorage.setItem(`chat_messages_${user.id}_${selectedReport.id}`, JSON.stringify(messages));
     }
   }, [messages, user?.id, selectedReport?.id]);
+
 
   // Load user's reports from backend
   useEffect(() => {
@@ -128,10 +151,14 @@ const ChatAssistant = () => {
         throw new Error('Report ID is missing');
       }
       
+      const token = localStorage.getItem('token');
       const res = await axios.post(`${API_CHAT}/rag`, {
         message: question,
         reportId: reportId
-      }, { timeout: 60000 });
+      }, {
+        timeout: 60000,
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
       console.log('[CHAT] Response received:', res.data);
       return res.data.reply || res.data.answer || "No response from AI";

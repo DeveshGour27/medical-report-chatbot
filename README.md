@@ -7,7 +7,7 @@ A comprehensive AI-powered medical report analysis system that extracts lab test
 This project consists of three main components working together:
 
 1. **Frontend Dashboard** (`medreport_dashboard/`) - React UI for uploading reports and chatting
-2. **Backend API** (`VishalBackend/`) - Node.js server handling user management and file uploads
+2. **Backend API** (`Backend/`) - Node.js server handling user management and file uploads
 3. **RAG Pipeline** (`rag_model/`) - Python FastAPI service for PDF extraction, KB search, and LLM responses
 
 ## 🏗️ Architecture
@@ -21,7 +21,7 @@ This project consists of three main components working together:
                  ↓                                 ↓
         ┌─────────────────┐             ┌──────────────────┐
         │  Node.js API    │             │  Python FastAPI  │
-        │  (VishalBackend)│             │   (RAG Pipeline) │
+        │    (Backend)    │             │   (RAG Pipeline) │
         │                 │             │                  │
         │ • User Auth     │             │ • PDF Extraction │
         │ • Reports CRUD  │             │ • KB Search      │
@@ -88,7 +88,7 @@ Access at `http://localhost:3000`
 ### 2. Backend Setup
 
 ```bash
-cd VishalBackend
+cd Backend
 npm install
 cp .env.example .env
 # Edit .env with your MongoDB URI and JWT secret
@@ -122,7 +122,7 @@ medical-report-chatbot/
 │   ├── package.json
 │   └── vite.config.js
 │
-├── VishalBackend/                 # Node.js backend
+├── Backend/                      # Node.js backend
 │   ├── controllers/               # Route handlers
 │   ├── models/                    # Mongoose schemas
 │   ├── routes/                    # API endpoints

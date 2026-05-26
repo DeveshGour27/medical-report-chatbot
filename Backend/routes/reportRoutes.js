@@ -1,8 +1,11 @@
 import express from "express";
 import Report from "../models/reportModel.js";
 import auth from "../middleware/auth.js";
+import axios from "axios";
 
 const router = express.Router();
+
+const RAG_URL = process.env.RAG_API_URL || "http://127.0.0.1:8000";
 
 // Save report — only whitelist known fields (B3 fix: no more req.body spread)
 router.post("/save", auth, async (req, res) => {
@@ -36,6 +39,17 @@ router.post("/save", auth, async (req, res) => {
       extractedDataStr: JSON.stringify(extractedData || {}),
       rawText: req.body.rawText || "",
       status: status || "processed"
+    });
+
+    // Notify Python memory engine (non-blocking, fire-and-forget)
+    axios.post(`${RAG_URL}/save_report`, {
+      id: report._id.toString(),
+      userId: req.user.id.toString(),
+      reportDate: reportDate || uploadDate || new Date().toISOString(),
+      extractedData: extractedData || {},
+      rawText: req.body.rawText || "",
+    }, { timeout: 10000 }).catch(err => {
+      console.warn("[REPORT SAVE] Memory engine notify failed (non-critical):", err.message);
     });
 
     res.json({ status: "saved", report });

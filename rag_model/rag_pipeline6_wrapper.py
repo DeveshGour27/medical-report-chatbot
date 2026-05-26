@@ -239,7 +239,7 @@ except Exception as e:
     logger.warning(f"Failed to init DB: {e}")
 
 
-def medical_chatbot(full_prompt: str, parsed_data: dict = None, session_id: str = "default") -> str:
+def medical_chatbot(full_prompt: str, parsed_data: dict = None, session_id: str = "default", chat_history: list = None) -> str:
     """
     Generate a chat response using LLM + KB context.
     
@@ -247,6 +247,7 @@ def medical_chatbot(full_prompt: str, parsed_data: dict = None, session_id: str 
         full_prompt: The user's question/prompt
         parsed_data: Optional extracted report data
         session_id: For tracking chat history
+        chat_history: Recent conversation history
     
     Returns:
         AI response string
@@ -256,6 +257,9 @@ def medical_chatbot(full_prompt: str, parsed_data: dict = None, session_id: str 
     
     if not parsed_data:
         parsed_data = {}
+        
+    if chat_history is None:
+        chat_history = []
     
     try:
         # Extract question from full_prompt
@@ -271,7 +275,7 @@ def medical_chatbot(full_prompt: str, parsed_data: dict = None, session_id: str 
                 patient_info={},
                 kb=kb,
                 groq=groq_client,
-                chat_history=[],
+                chat_history=chat_history,
                 session_id=session_id,
             )
             return response.get("answer", "Unable to generate response")

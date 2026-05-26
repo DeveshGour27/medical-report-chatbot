@@ -13,7 +13,20 @@ const userSchema = new Schema(
     bloodType: { type: String },
     medicalId: { type: String },
     phone: { type: String },
-    dateOfBirth: { type: String }
+    dateOfBirth: { type: String },
+    // AI-generated and auto-updated health profile
+    healthProfile: {
+      chronicConditions: [{ type: String }],
+      allergies: [{ type: String }],
+      currentMedications: [{ type: String }],
+      previousDiagnoses: [{ type: String }],
+      riskIndicators: [{ type: String }],
+      recurringSymptoms: [{ type: String }],
+      healthSummary: { type: String },
+      lastUpdated: { type: Date },
+      totalReports: { type: Number, default: 0 },
+      totalTestsTracked: { type: Number, default: 0 }
+    }
   },
   { timestamps: true }
 );
