@@ -26,60 +26,11 @@ export const sendVerificationEmail = async (
   token
 ) => {
   try {
-    console.log("EMAIL_USER:", process.env.EMAIL_USER);
-
-    console.log(
-      "CLIENT_ID exists:",
-      !!process.env.GOOGLE_CLIENT_ID
-    );
-
-    console.log(
-      "CLIENT_SECRET exists:",
-      !!process.env.GOOGLE_CLIENT_SECRET
-    );
-
-    console.log(
-      "REFRESH_TOKEN exists:",
-      !!process.env.GOOGLE_REFRESH_TOKEN
-    );
-
-    const accessToken = await oauth2Client.getAccessToken();
-
-    console.log("ACCESS TOKEN:", accessToken);
-    console.log("ACCESS TOKEN TYPE:", typeof accessToken);
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-
-      auth: {
-        type: "OAuth2",
-
-        user: process.env.EMAIL_USER,
-
-        clientId: process.env.GOOGLE_CLIENT_ID,
-
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-
-        refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
-
-        accessToken:
-          typeof accessToken === "string"
-            ? accessToken
-            : accessToken?.token,
-      },
-    });
-
     const verificationUrl = `${
       process.env.FRONTEND_URL || "http://localhost:3000"
     }/verify-email?token=${token}`;
-    const mailOptions = {
-      from: `MedReport <${process.env.EMAIL_USER}>`,
 
-      to: email,
-
-      subject: "Verify Your Email Address",
-
-      html: `
+    const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px;">
 
@@ -137,12 +88,34 @@ export const sendVerificationEmail = async (
 
         </div>
       </div>
-      `,
-    };
+    `;
 
-    const info = await transporter.sendMail(mailOptions);
+    const rawMessage = [
+      `From: MedReport <${process.env.EMAIL_USER}>`,
+      `To: ${email}`,
+      `Subject: Verify Your Email Address`,
+      `Content-Type: text/html; charset=utf-8`,
+      `MIME-Version: 1.0`,
+      ``,
+      htmlContent,
+    ].join("\n");
 
-    console.log("Verification email sent:", info.messageId);
+    const encodedMessage = Buffer.from(rawMessage)
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+    const info = await gmail.users.messages.send({
+      userId: "me",
+      requestBody: {
+        raw: encodedMessage,
+      },
+    });
+
+    console.log("Verification email sent directly via Gmail API:", info.data.id);
 
     return true;
   } catch (error) {
