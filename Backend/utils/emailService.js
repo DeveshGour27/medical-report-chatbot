@@ -26,7 +26,27 @@ export const sendVerificationEmail = async (
   token
 ) => {
   try {
+    console.log("EMAIL_USER:", process.env.EMAIL_USER);
+
+    console.log(
+      "CLIENT_ID exists:",
+      !!process.env.GOOGLE_CLIENT_ID
+    );
+
+    console.log(
+      "CLIENT_SECRET exists:",
+      !!process.env.GOOGLE_CLIENT_SECRET
+    );
+
+    console.log(
+      "REFRESH_TOKEN exists:",
+      !!process.env.GOOGLE_REFRESH_TOKEN
+    );
+
     const accessToken = await oauth2Client.getAccessToken();
+
+    console.log("ACCESS TOKEN:", accessToken);
+    console.log("ACCESS TOKEN TYPE:", typeof accessToken);
 
     const transporter = nodemailer.createTransport({
       service: "gmail",
@@ -42,14 +62,16 @@ export const sendVerificationEmail = async (
 
         refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
 
-        accessToken: accessToken.token,
+        accessToken:
+          typeof accessToken === "string"
+            ? accessToken
+            : accessToken?.token,
       },
     });
 
     const verificationUrl = `${
       process.env.FRONTEND_URL || "http://localhost:3000"
     }/verify-email?token=${token}`;
-
     const mailOptions = {
       from: `MedReport <${process.env.EMAIL_USER}>`,
 
