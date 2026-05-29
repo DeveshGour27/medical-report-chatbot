@@ -44,15 +44,13 @@ export const registerUser = async (req, res) => {
     });
 
     // Send verification email
+    // Send verification email
     try {
       await sendVerificationEmail(email, username, verificationToken);
     } catch (emailError) {
       console.error("Failed to send verification email:", emailError);
-      // Delete the user if email fails
-      await User.findByIdAndDelete(user._id);
-      return res.status(500).json({
-        message: "Failed to send verification email. Please try again.",
-      });
+
+      // Allow signup even if email fails
     }
 
     // Don't create a session token yet - user must verify first
@@ -181,12 +179,12 @@ export const loginUser = async (req, res) => {
     }
 
     // Check if email is verified
-    if (!user.isEmailVerified) {
-      return res.status(403).json({
-        message:
-          "Please verify your email before logging in. Check your inbox for the verification link.",
-      });
-    }
+    // if (!user.isEmailVerified) {
+    //   return res.status(403).json({
+    //     message:
+    //       "Please verify your email before logging in. Check your inbox for the verification link.",
+    //   });
+    // }
 
     const isPasswordCorrect = await user.isPasswordCorrect(password);
     if (!isPasswordCorrect) {
